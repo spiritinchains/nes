@@ -30,7 +30,7 @@ typedef struct _cpu {
     int state;
 } CPU;
 
-void cpu_init(CPU* cpu, char* mem);
+void cpu_init(CPU* cpu, MMAP* mem);
 void cpu_cycle(CPU* cpu);
 
 void set_flag(CPU* cpu, char bit);
@@ -38,4 +38,4 @@ void clr_flag(CPU* cpu, char bit);
 
 char* get_arg_ptr(CPU* cpu);
 
-void _opc_ora(CPU* cpu);
+void _opc_adc(CPU* cpu);

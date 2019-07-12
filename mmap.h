@@ -4,10 +4,13 @@
  */
 typedef struct _mmap
 {
-    char* root;
+    void* index[65536];
+    char ram[2048];
 } MMAP;
 
-void mmap_init(MMAP* mmap, char* rt);
+void mmap_init(MMAP* mmap);
+
+void mmap_link_memrg(MMAP* mmap, short idx, char* target, int n);
 
 void* mmap_getptr(MMAP* mmap, short idx);
 char mmap_getint8(MMAP* mmap, short idx);

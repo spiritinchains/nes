@@ -6,7 +6,7 @@ typedef struct _cpu {
     unsigned char Y;
     unsigned char S;
     unsigned short PC;
-    unsigned char P;        // N V - B D I Z C
+    unsigned char P;        // flags: N V - B D I Z C
     unsigned char SP;
     MMAP* mmap;
     /*!
@@ -22,7 +22,7 @@ typedef struct _cpu {
      *      7 - absolute X
      *      8 - Immediate
      *      9 - Indirect X
-     *      (Indirect and relative are covered in special cases)
+     * (Indirect and relative are covered in special cases)
      * bit 28-31 - branching (?)
      * bit 32 - always 1
      *
@@ -33,9 +33,9 @@ typedef struct _cpu {
 void cpu_init(CPU* cpu, MMAP* mem);
 void cpu_cycle(CPU* cpu);
 
-void set_flag(CPU* cpu, char bit);
-void clr_flag(CPU* cpu, char bit);
+void cpu_set_flag(CPU* cpu, char flag);
+void cpu_clr_flag(CPU* cpu, char flag);
 
-char* get_arg_ptr(CPU* cpu);
+char* cpu_get_arg_ptr(CPU* cpu);
 
 void _opc_adc(CPU* cpu);

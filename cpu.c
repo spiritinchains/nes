@@ -3,13 +3,70 @@
 
 void _set_addrmd(CPU* cpu, int mode)
 {
-    cpu->state &= ~(15 << 4);
+    cpu->state &= ~(0xF << 4);
     cpu->state |= (mode << 4);
 }
 
 char _get_addrmd(CPU* cpu)
 {
-    return ((cpu->state >> 4) & 15);
+    return ((cpu->state >> 4) & 0xF);
+}
+
+char _get_flag_bit(char flag)
+{
+    /*
+     * Flag register:
+     * N V - B D I Z C
+     * 7 6 5 4 3 2 1 0
+     */
+    char bit = 8;
+    switch (flag)
+    {
+        case 'C':
+            bit = 0;
+            break;
+        case 'Z':
+            bit = 1;
+            break;
+        case 'I':
+            bit = 2;
+            break;
+        case 'D':
+            bit = 3;
+            break;
+        case 'B':
+            bit = 4;
+            break;
+        case 'V':
+            bit = 6;
+            break;
+        case 'N':
+            bit = 7;
+            break;
+        default:
+            break;
+    }
+    return bit;
+}
+
+void cpu_set_flag(CPU* cpu, char flag)
+{
+    unsigned int bit = _get_flag_bit(flag);
+    if (bit < 8)
+    {
+        cpu->P |= (1 << bit);
+        return;
+    }
+}
+
+void cpu_clr_flag(CPU* cpu, char flag)
+{
+    unsigned int bit = _get_flag_bit(flag);
+    if (bit < 8)
+    {
+        cpu->P &= ~(1 << bit);
+    }
+
 }
 
 void cpu_init(CPU* cpu, MMAP* mm)

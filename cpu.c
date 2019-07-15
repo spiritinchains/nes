@@ -1,17 +1,6 @@
 #include "cpu.h"
 #include <stdio.h>
 
-void _set_addrmd(CPU* cpu, int mode)
-{
-    cpu->state &= ~(0xF << 4);
-    cpu->state |= (mode << 4);
-}
-
-char _get_addrmd(CPU* cpu)
-{
-    return ((cpu->state >> 4) & 0xF);
-}
-
 char _get_flag_bit(char flag)
 {
     /*
@@ -122,23 +111,23 @@ void cpu_cycle(CPU* cpu)
             // 0 is not a valid addressing id as per our templates, so these
             // are remapped; Indirect X (9) if c == 1 and Immediate (8) if
             // c == 0. Or, c + 8
-            _set_addrmd(cpu, c + 8);
+            cpu->addrmd = c + 8;
         }
         else if (b == 2 && c == 1)
         {
             // in this case, the mode is actually Immediate (8) instead of
             // Accumulator/Implied (2)
-            _set_addrmd(cpu, 8);
+            cpu->addrmd = 8;
         }
         else if (b == 6 && c != 1)
         {
             // in this case, the mode is always Implied (2)
-            _set_addrmd(cpu, 2);
+            cpu->addrmd = 2;
         }
         else
         {
             // for all other values the mode is indicated by b
-            _set_addrmd(cpu, b);
+            cpu->addrmd = b;
         }
     }
     cpu->PC++;

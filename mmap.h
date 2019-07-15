@@ -5,12 +5,14 @@
 typedef struct _mmap
 {
     void* index[65536];
-    char ram[2048];
+    unsigned char ram[2048];
 } MMAP;
 
 void mmap_init(MMAP* mmap);
 
-void mmap_link_memrg(MMAP* mmap, short idx, char* target, int n);
+void mmap_link_memrg(MMAP* mmap, unsigned short idx, char* target, int n);
 
-void* mmap_getptr(MMAP* mmap, short idx);
-char mmap_getint8(MMAP* mmap, short idx);
+void* mmap_getptr(MMAP* mmap, unsigned short idx);
+
+unsigned char mmap_getint8(MMAP* mmap, unsigned short idx);
+unsigned short mmap_getint16(MMAP* mmap, unsigned short idx);

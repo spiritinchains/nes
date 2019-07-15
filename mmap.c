@@ -17,7 +17,7 @@ void mmap_init(MMAP* self)
      */
 }
 
-void mmap_link_memrg(MMAP* self, short idx, char* target, int n)
+void mmap_link_memrg(MMAP* self, unsigned short idx, char* target, int n)
 {
     /*!
      * links a memory address to a specific virtual index, and the n addresses
@@ -40,17 +40,17 @@ void mmap_link_memrg(MMAP* self, short idx, char* target, int n)
     }
 }
 
-void* mmap_getptr(MMAP* self, short i)
+void* mmap_getptr(MMAP* self, unsigned short i)
 {
     return self->index[i];
 }
 
-char mmap_getint8(MMAP* self, short idx)
+unsigned char mmap_getint8(MMAP* self, unsigned short idx)
 {
-    return *(char*)mmap_getptr(self, idx);
+    return *(unsigned char*)mmap_getptr(self, idx);
 }
 
-short mmap_getint16(MMAP* self, short idx)
+unsigned short mmap_getint16(MMAP* self, unsigned short idx)
 {
     /*!
      * returns a 16-bit integer from location idx, following high-endian
@@ -58,5 +58,5 @@ short mmap_getint16(MMAP* self, short idx)
      * This is done manually rather than using C's built-in datatypes so as
      * to be architecture-agnostic (i guess).
      */
-    return (((short)mmap_getint8(self, idx + 1)) << 8) + mmap_getint8(self, idx);
+    return (((unsigned short)mmap_getint8(self, idx + 1)) << 8) + mmap_getint8(self, idx);
 }

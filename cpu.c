@@ -71,64 +71,141 @@ void cpu_init(CPU* cpu, MMAP* mm)
     cpu->state = 1;
 }
 
-void cpu_cycle(CPU* cpu)
+int _get_addrmd(char ins)
 {
-    char ins = *(char*)mmap_getptr(cpu->mmap, cpu->PC);
-    if (ins == 0x00)
+    // most opcodes follow the form aaabbbcc
+    // notable exceptions to the rule:
+    // 0x00  000 000 00 (BRK)
+    // 0x20  001 000 00 (JSR) abs
+    // 0x40  010 000 00 (RTI)
+    // 0x60  011 000 00 (RTS)
+
+    // side note:
+    // branching opcodes follow the form xxy10000
+    // meaning c = 0, b = 4 and aaa = xxy
+
+    char a = (ins & (7 << 5)) >> 5;
+    char b = (ins & (7 << 2)) >> 2;
+    char c = ins & 3;
+
+    int am;     // addressing mode is stored here
+
+    if (b == 0)
     {
-        //BRK
-        cpu->state = 0;
+        // 0 is not a valid addressing id as per our templates, so these
+        // are remapped; Indirect X (9) if c == 1 and Immediate (8) if
+        // c == 0. Or, c + 8
+        am = c + 8;
     }
-    else if (ins == 0x20)
+    else if (b == 2 && c == 1)
     {
-        //JSR abs
-        //push PC + 2
-        //jump arg
+        // in this case, the mode is actually Immediate (8) instead of
+        // Accumulator/Implied (2)
+        am = 8;
     }
-    else if (ins == 0x40)
+    else if (b == 6 && c != 1)
     {
-        //RTI
-    }
-    else if (ins == 0x60)
-    {
-        //RTS
+        // in this case, the mode is always Implied (2)
+        am = 2;
     }
     else
     {
-        // all other opcodes follow the form aaabbbcc
-        // branching opcodes follow the form xxy10000
-        // meaning c = 0, b = 4 and aaa = xxy
-
-        char a = (ins & (7 << 5)) >> 5;
-        char b = (ins & (7 << 2)) >> 2;
-        char c = ins & 3;
-
-        //char opc_id = ins & (!28);
-
-        // get addressing mode
-        if (b == 0)
-        {
-            // 0 is not a valid addressing id as per our templates, so these
-            // are remapped; Indirect X (9) if c == 1 and Immediate (8) if
-            // c == 0. Or, c + 8
-            cpu->addrmd = c + 8;
-        }
-        else if (b == 2 && c == 1)
-        {
-            // in this case, the mode is actually Immediate (8) instead of
-            // Accumulator/Implied (2)
-            cpu->addrmd = 8;
-        }
-        else if (b == 6 && c != 1)
-        {
-            // in this case, the mode is always Implied (2)
-            cpu->addrmd = 2;
-        }
-        else
-        {
-            // for all other values the mode is indicated by b
-            cpu->addrmd = b;
-        }
+        // for all other values the mode is indicated by b
+        am = b;
     }
-    cpu->PC++;
+    return am;
+}
+
+void _parse_op(CPU* cpu)
+{
+    /*
+     * get effective address and operand from current cpu state
+     * should always be executed when PC is at operand address 
+     * i.e right after the instruction address
+     * 
+     * TODO:
+     * - manage exception cases (JMP)
+     * - manage zero page x and y cases
+     */
+
+    switch (cpu->addrmd)
+    {
+        case 1:
+            // zero page
+            // 
+            cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
+            cpu->e_addr = cpu->op_val;
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
+            cpu->PC++;
+            break;
+        case 2:
+            // implied / accumulator
+            // 
+            break;
+        case 3:
+            // absolute
+            // 
+            cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->op_val);
+            cpu->PC += 2;
+            break;
+        case 4:
+            // Indirect Y
+            // 
+            
+            break;
+        case 5:
+            // zero page x/y
+            // 
+            break;
+        case 6:
+            // absolute Y
+            // 
+            break;
+        case 7:
+            // absolute x
+            // 
+            break;
+        case 8:
+            // immediate
+            // 
+            cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
+            cpu->op_eval = cpu->op_val;
+            cpu->PC++;
+            break;
+        case 9:
+            // indirect x
+            // 
+            break;
+        default:
+            // invalid addressing mode
+            break;
+    }
+}
+
+// add function to execute opcode from simplified id
+
+void cpu_cycle(CPU* cpu)
+{
+    char ins = *(char*)mmap_getptr(cpu->mmap, cpu->PC);
+    /*
+     * NOTE: need to implement a new way to handle exception cases
+     * (0x00, 0x20, 0x40, 0x60)
+     * 
+     * code will follow the following structure
+     * ---------------------
+     * - Get addressing mode
+     * - Get address and operand through mode
+     * - execute opcode from simplified instruction
+     * 
+     * TODO:
+     * - seperate code for addressing mode
+     * - not count exception cases as if..else but rather handle them
+     *   differently when executing (see step 3)
+     */
+    
+    cpu->addrmd = _get_addrmd(ins);
+    // get operand value and effective address
+    // execute opcode
+    //cpu->PC++;
 }

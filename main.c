@@ -5,30 +5,19 @@
 
 int main(int argc, char** argv)
 {
-    //FILE* code = fopen("in", "r");
+    const char text_usage[] = "Usage\nnes [rom file]\n";
 
-    int i = 0;
+    printf("%d", argc);
 
+    // check argument
+    if (argc <= 1)
+    {
+        printf(text_usage);
+    }
+
+    // initialization code
     CPU cpu;
     MMAP mem;
     mmap_init(&mem);
     cpu_init(&cpu, &mem);
-
-    //----- testing mmap
-    printf("%x ", mem.ram);
-    printf("%x ", mmap_getptr(&mem, 0x0));
-    printf("%x ", mmap_getptr(&mem, 0x20));
-    printf("%x ", mmap_getptr(&mem, 0x40));
-    printf("%x ", mmap_getptr(&mem, 0x801));
-
-    // while(!feof(code))
-    // {
-    //     mem.ram[i] = fgetc(code);
-    //     i++;
-    // }
-
-    // while(cpu.state)
-    // {
-    //     cpu_cycle(&cpu);
-    // }
 }

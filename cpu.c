@@ -88,14 +88,19 @@ int _get_addrmd(char ins)
     char b = (ins & (7 << 2)) >> 2;
     char c = ins & 3;
 
+    //printf("%x %x %x ", a, b, c);
+
     int am;     // addressing mode is stored here
 
     if (b == 0)
     {
         // 0 is not a valid addressing id as per our templates, so these
         // are remapped; Indirect X (9) if c == 1 and Immediate (8) if
-        // c == 0. Or, c + 8
-        am = c + 8;
+        // c == 0 or 2.
+        if (c == 1)
+            am = 9;
+        else if (c == 2 || c == 0)
+            am = 8;
     }
     else if (b == 2 && c == 1)
     {
@@ -120,14 +125,15 @@ void _parse_op(CPU* cpu)
 {
     /*
      * get effective address and operand from current cpu state
+     * and advance PC to the next instruction
      * should always be executed when PC is at operand address 
      * i.e right after the instruction address
-     * 
+     *
      * eff. address  = the address from which opcode will be retrieved
      *                 or to which value will be written
      * operand value = the raw value passed as operand
      * eval. operand = the value retrieved from address
-     * 
+     *
      * TODO:
      * - manage exception cases (JMP)
      * - manage zero page x and y cases ----- DONE
@@ -138,7 +144,7 @@ void _parse_op(CPU* cpu)
     {
         case 1:
             // zero page
-            // 
+            //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val;
             //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
@@ -146,11 +152,12 @@ void _parse_op(CPU* cpu)
             break;
         case 2:
             // implied / accumulator
-            // 
+            //
+            cpu->PC++;
             break;
         case 3:
             // absolute
-            // 
+            //
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val;
             //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->op_val);
@@ -158,7 +165,7 @@ void _parse_op(CPU* cpu)
             break;
         case 4:
             // Indirect Y
-            // 
+            //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = mmap_getint16(cpu->mmap, cpu->op_val) + cpu->Y;
             //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
@@ -166,7 +173,7 @@ void _parse_op(CPU* cpu)
             break;
         case 5:
             // zero page x/y
-            // 
+            //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = (0xFF & (cpu->op_val + cpu->X));
             cpu->e_addry = (0xFF & (cpu->op_val + cpu->Y));
@@ -174,24 +181,24 @@ void _parse_op(CPU* cpu)
             break;
         case 6:
             // absolute Y
-            // 
+            //
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val + cpu->Y;
             cpu->PC += 2;
             break;
         case 7:
             // absolute x
-            // 
+            //
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val + cpu->X;
             cpu->PC += 2;
             break;
         case 8:
             // immediate
-            // 
+            //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->op_eval = cpu->op_val;
-            //cpu->PC++;
+            cpu->PC++;
             break;
         case 9:
             // indirect x
@@ -202,6 +209,7 @@ void _parse_op(CPU* cpu)
             break;
         default:
             // invalid addressing mode
+            cpu->PC++;
             break;
     }
 }
@@ -214,23 +222,24 @@ void cpu_cycle(CPU* cpu)
     /*
      * NOTE: need to implement a new way to handle exception cases
      * (0x00, 0x20, 0x40, 0x60)
-     * 
+     *
      * code will follow the following structure
      * ---------------------
      * - Get addressing mode
      * - Get address and operand through mode
      * - execute opcode from simplified instruction
-     * 
+     *
      * TODO:
      * - seperate code for addressing mode
      * - not count exception cases as if..else but rather handle them
      *   differently when executing (see step 3)
      */
-    
-    // get addressing mode opcodes
+
+    // get addressing mode and opcode
     cpu->addrmd = _get_addrmd(ins);
+    cpu->state = mmap_getint8(cpu->mmap, cpu->PC);
     // get operand value and effective address
+    cpu->PC++;
     _parse_op(cpu);
     // execute opcode
-    //cpu->PC++;
 }

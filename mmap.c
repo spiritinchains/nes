@@ -60,3 +60,15 @@ unsigned short mmap_getint16(MMAP* self, unsigned short idx)
      */
     return (((unsigned short)mmap_getint8(self, idx + 1)) << 8) + mmap_getint8(self, idx);
 }
+
+void mmap_setint16(MMAP* self, unsigned short idx, unsigned int val)
+{
+    *(unsigned char*)mmap_getptr(self, idx) = (unsigned char)val;
+}
+
+void mmap_setint16(MMAP* self, unsigned short idx, unsigned int val)
+{
+    // NOTE: endianness is not enforced here and might depend on processor architecture
+    // leading to miscompilations on different archs; we *should* be fine on x86
+    *(unsigned short*)mmap_getptr(self, idx) = (unsigned short)val;
+}

@@ -14,6 +14,8 @@ typedef struct _cpu {
     unsigned int e_addr;    // effective address
     unsigned int e_addry;   // effective address, y indexed (special use case)
     unsigned int addrmd;    // addressing mode
+    unsigned int cur_op;    // current opcode
+    
     /*
      * 0001 1 - zero page
      * 0010 2 - Accumulator / Implied

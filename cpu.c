@@ -58,6 +58,25 @@ void cpu_clr_flag(CPU* cpu, char flag)
 
 }
 
+void cpu_stack_pushint8(CPU* cpu, unsigned int val)
+{
+    cpu->SP--;
+}
+void cpu_stack_pushint16(CPU* cpu, unsigned int val)
+{
+    cpu->SP--;
+}
+
+unsigned int cpu_stack_popint8(CPU* cpu)
+{
+    mmap_getint8(cpu->mmap, 0x100 + (++cpu->SP));
+}
+unsigned int cpu_stack_popint16(CPU* cpu)
+{
+    mmap_getint16(cpu->mmap, 0x100 + (++cpu->SP));
+    cpu->SP++;
+}
+
 void cpu_init(CPU* cpu, MMAP* mm)
 {
     cpu->A = 0;
@@ -121,12 +140,21 @@ int _get_addrmd(char ins)
     return am;
 }
 
+void _exec_opc(CPU* cpu)
+{
+    /*
+     * Executes opcode based on opcode type in cur_op
+     */
+
+
+}
+
 void _parse_op(CPU* cpu)
 {
     /*
      * get effective address and operand from current cpu state
      * and advance PC to the next instruction
-     * should always be executed when PC is at operand address 
+     * should always be executed when PC is at operand address
      * i.e right after the instruction address
      *
      * eff. address  = the address from which opcode will be retrieved
@@ -218,7 +246,6 @@ void _parse_op(CPU* cpu)
 
 void cpu_cycle(CPU* cpu)
 {
-    char ins = *(char*)mmap_getptr(cpu->mmap, cpu->PC);
     /*
      * NOTE: need to implement a new way to handle exception cases
      * (0x00, 0x20, 0x40, 0x60)
@@ -235,11 +262,14 @@ void cpu_cycle(CPU* cpu)
      *   differently when executing (see step 3)
      */
 
+    char ins = *(char*)mmap_getptr(cpu->mmap, cpu->PC);
     // get addressing mode and opcode
     cpu->addrmd = _get_addrmd(ins);
+    cpu->cur_op = 0xE3 & ins;
     cpu->state = mmap_getint8(cpu->mmap, cpu->PC);
     // get operand value and effective address
     cpu->PC++;
     _parse_op(cpu);
     // execute opcode
+    _exec_opc(cpu);
 }

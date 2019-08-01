@@ -7,8 +7,6 @@ int main(int argc, char** argv)
 {
     const char text_usage[] = "Usage\nnes [rom file]\n";
 
-    printf("%d", argc);
-
     // check argument
     if (argc <= 1)
     {
@@ -20,4 +18,9 @@ int main(int argc, char** argv)
     MMAP mem;
     mmap_init(&mem);
     cpu_init(&cpu, &mem);
+
+    while (cpu.state) 
+    {
+        cpu_cycle(&cpu);
+    }
 }

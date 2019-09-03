@@ -36,7 +36,7 @@ void cpu_init(CPU* cpu, MMAP* mem);
 void cpu_cycle(CPU* cpu);
 
 void cpu_set_flag(CPU* cpu, char flag);
-void cpu_clr_flag(CPU* cpu, char flag);
+void cpu_clear_flag(CPU* cpu, char flag);
 
 void cpu_stack_pushint8(CPU* cpu, unsigned int);
 void cpu_stack_pushint16(CPU* cpu, unsigned int);

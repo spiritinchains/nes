@@ -48,7 +48,7 @@ void cpu_set_flag(CPU* cpu, char flag)
     }
 }
 
-void cpu_clr_flag(CPU* cpu, char flag)
+void cpu_clear_flag(CPU* cpu, char flag)
 {
     unsigned int bit = _get_flag_bit(flag);
     if (bit < 8)
@@ -92,6 +92,11 @@ void cpu_init(CPU* cpu, MMAP* mm)
 
 int _get_addrmd(char ins)
 {
+    /*
+     * returns the addressing mode
+     * ins = instruction byte
+     */
+
     // most opcodes follow the form aaabbbcc
     // notable exceptions to the rule:
     // 0x00  000 000 00 (BRK)
@@ -146,7 +151,6 @@ void _exec_opc(CPU* cpu)
      * Executes opcode based on opcode type in cur_op
      */
 
-
 }
 
 void _parse_op(CPU* cpu)
@@ -158,9 +162,10 @@ void _parse_op(CPU* cpu)
      * i.e right after the instruction address
      *
      * eff. address  = the address from which opcode will be retrieved
-     *                 or to which value will be written
+     *                 or in which value will be modified
      * operand value = the raw value passed as operand
      * eval. operand = the value retrieved from address
+     *                 this is the value that's used by the opcodes
      *
      * TODO:
      * - manage exception cases (JMP)

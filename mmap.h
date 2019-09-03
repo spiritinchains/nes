@@ -16,3 +16,6 @@ void* mmap_getptr(MMAP* mmap, unsigned short idx);
 
 unsigned char mmap_getint8(MMAP* mmap, unsigned short idx);
 unsigned short mmap_getint16(MMAP* mmap, unsigned short idx);
+
+void mmap_setint8(MMAP* self, unsigned short idx, unsigned int val);
+void mmap_setint16(MMAP* self, unsigned short idx, unsigned int val);

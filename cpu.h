@@ -1,20 +1,20 @@
 #include "mmap.h"
 
 typedef struct _cpu {
-    unsigned int A;
-    unsigned int X;
-    unsigned int Y;
-    unsigned int S;
-    unsigned int PC;
-    unsigned int P;         // flags: N V - B D I Z C
-    unsigned int SP;        // stack pointer
+    char A;
+    char X;
+    char Y;
+    char S;
+    short PC;
+    char P;         // flags: N V - B D I Z C
+    char SP;        // stack pointer
 
-    unsigned int op_val;    // raw operand value - the value actually passed to the code
-    unsigned int op_eval;   // evaluated operand value - the value that the instruction uses
-    unsigned int e_addr;    // effective address
-    unsigned int e_addry;   // effective address, y indexed (special use case)
-    unsigned int addrmd;    // addressing mode
-    unsigned int cur_op;    // current opcode
+    char op_val;    // raw operand value - the value actually passed to the code
+    char op_eval;   // evaluated operand value - the value that the instruction uses
+    short e_addr;    // effective address
+    short e_addry;   // effective address, y indexed (special use case)
+    char addrmd;    // addressing mode
+    char cur_op;    // current opcode
     
     /*
      * 0001 1 - zero page
@@ -41,5 +41,5 @@ void cpu_clear_flag(CPU* cpu, char flag);
 void cpu_stack_pushint8(CPU* cpu, unsigned int);
 void cpu_stack_pushint16(CPU* cpu, unsigned int);
 
-unsigned int cpu_stack_popint8(CPU* cpu);
-unsigned int cpu_stack_popint16(CPU* cpu);
+char cpu_stack_popint8(CPU* cpu);
+short cpu_stack_popint16(CPU* cpu);

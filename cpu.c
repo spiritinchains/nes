@@ -67,11 +67,11 @@ void cpu_stack_pushint16(CPU* cpu, unsigned int val)
     cpu->SP--;
 }
 
-unsigned int cpu_stack_popint8(CPU* cpu)
+char cpu_stack_popint8(CPU* cpu)
 {
     mmap_getint8(cpu->mmap, 0x100 + (++cpu->SP));
 }
-unsigned int cpu_stack_popint16(CPU* cpu)
+short cpu_stack_popint16(CPU* cpu)
 {
     mmap_getint16(cpu->mmap, 0x100 + (++cpu->SP));
     cpu->SP++;
@@ -209,6 +209,7 @@ void _parse_op(CPU* cpu)
             //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = (0xFF & (cpu->op_val + cpu->X));
+            // e_addry only exists because LDX uses Y to index and not X
             cpu->e_addry = (0xFF & (cpu->op_val + cpu->Y));
             cpu->PC++;
             break;

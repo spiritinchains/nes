@@ -65,11 +65,12 @@ void ins_adc() {
 
 void ins_sta() {
     // Store value of accumulator in memory
-    
+    mmap_setint8(cpu->mmap, cpu->e_addr, cpu->A);
 } 
 
 void ins_lda() {
     // Load in accumulator
+    cpu->A = cpu->op_eval;
 }
 
 void ins_cmp() {

@@ -35,6 +35,7 @@ typedef struct _cpu {
 void cpu_init(CPU* cpu, MMAP* mem);
 void cpu_cycle(CPU* cpu);
 
+char cpu_get_flag(CPU* cpu, char flag);
 void cpu_set_flag(CPU* cpu, char flag);
 void cpu_clear_flag(CPU* cpu, char flag);
 

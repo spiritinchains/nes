@@ -40,6 +40,11 @@ char _get_flag_bit(char flag)
 }
 
 // flag functions
+char cpu_get_flag(CPU* cpu, char flag)
+{
+    unsigned int bit = _get_flag_bit(flag);
+    return (cpu->P >> bit) & 0x01;
+}
 void cpu_set_flag(CPU* cpu, char flag)
 {
     unsigned int bit = _get_flag_bit(flag);
@@ -49,7 +54,6 @@ void cpu_set_flag(CPU* cpu, char flag)
         return;
     }
 }
-
 void cpu_clear_flag(CPU* cpu, char flag)
 {
     unsigned int bit = _get_flag_bit(flag);
@@ -143,6 +147,36 @@ int _get_addrmd(char ins)
         // in this case, the mode is always Implied (2)
         am = 2;
     }
+    else if (b == 4 && c == 0)
+    {
+        // this is relative addressing, which is only used in branches
+        // so we can harmlessly (for now) treat it as immediate
+        am = 8;
+    }
+    else if (c == 0 && (b == 2 || b == 6))
+    {
+        // These are guaranteed single-byte operations, therefore addressing
+        // mode is implied
+        am = 2;
+    }
+    else if
+    (
+        ins == 0x8A ||
+        ins == 0x9A ||
+        ins == 0xAA ||
+        ins == 0xBA ||
+        ins == 0xCA ||
+        ins == 0xEA ||
+        ins == 0x00 ||
+        ins == 0x20 ||
+        ins == 0x40 ||
+        ins == 0x60
+    )
+    {
+        // these are single byte instructions that don't clearly fall into
+        // the above categories. all implied.
+        am = 2;
+    }
     else
     {
         // for all other values the mode is indicated by b
@@ -189,6 +223,7 @@ void _parse_op(CPU* cpu)
          *   from; this exists because some opcodes need to modify the memory in some
          *   addressing modes
          * - evaluated operand is the value retrieved from the effective address
+         * - PC should be at the address AFTER the instruction's address
          */
         case 1:
             // zero page
@@ -268,7 +303,6 @@ void _parse_op(CPU* cpu)
             break;
         default:
             // invalid addressing mode
-            cpu->PC++;
             break;
     }
 }
@@ -296,11 +330,12 @@ void cpu_cycle(CPU* cpu)
     char ins = *(char*)mmap_getptr(cpu->mmap, cpu->PC);
     // get addressing mode and opcode
     cpu->addrmd = _get_addrmd(ins);
-    cpu->cur_op = 0xE3 & ins;
+    cpu->cur_op = ins;
     cpu->state = mmap_getint8(cpu->mmap, cpu->PC);
     // get operand value and effective address
     cpu->PC++;
     _parse_op(cpu);
     // execute opcode
+    // NOTE: at this point the PC will point to the NEXT instruction, not the one being executed
     _exec_opc(cpu);
 }

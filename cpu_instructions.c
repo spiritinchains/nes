@@ -33,10 +33,6 @@ c = 10
 
 CPU* cpu;
 
-void ins_nop() {
-    // No operation
-}
-
 /*
  * TODO:
  * - fix all instructions
@@ -153,6 +149,29 @@ void ins_sbc() {
 
 void ins_bit() {
     // Test bits in mem with accumulator
+    // this is a weird instruction where the value in A is ANDed with memory
+    // if the result (which is not stored anywhere) is zero then Zero flag is set
+    // and bit 7 of memory sets N flag while bit 6 sets overflow flag
+    if (cpu->A & cpu->op_eval) {
+        cpu_set_flag(cpu, "Z");
+    }
+    else {
+        cpu_clear_flag(cpu, "Z");
+    }
+    if ((cpu->op_eval >> 6) & 0x01) {
+        // bit 6 is set, meaning overflow will be set
+        cpu_set_flag(cpu, "V");
+    }
+    else {
+        cpu_clear_flag(cpu, "V");
+    }
+    if ((cpu->op_eval >> 7) & 0x01) {
+        // bit 7 is set, meaning negative will be set
+        cpu_set_flag(cpu, "N");
+    }
+    else {
+        cpu_clear_flag(cpu, "N");
+    }
 }
 
 void ins_jmp() {
@@ -266,3 +285,155 @@ void ins_inc() {
     mmap_setint8(cpu->mmap, cpu->e_addr, cpu->op_eval + 1);
 }
 
+void ins_dex() {
+    cpu->X -= 1;
+}
+void ins_dey() {
+    cpu->Y -= 1;
+}
+void ins_inx() {
+    cpu->X += 1;
+}
+void ins_iny() {
+    cpu->Y += 1;
+}
+
+
+
+void ins_branch() {
+    /*
+     * All branching opcodes follow the same format:
+     * xxy10000
+     * where xx is the flag compared with y
+     * if they are equal, branch is taken.
+     * all branches follow relative addressing where the signed operand value
+     * is added to the PC
+     * addition happen after PC has already been incremented to point to the next instruction
+     * see _getaddrmd and _parse_op
+     * 
+     * xx:
+     * 00 - n
+     * 01 - v
+     * 10 - c
+     * 11 - z
+     */
+    char x = (cpu->cur_op >> 5);
+    char a = x & 0x01;
+    x = x >> 1;
+    char b;
+    switch(x) {
+        case 0:
+            b = cpu->P >> 7;
+            break;
+        case 1:
+            b = cpu->P >> 6;
+            break;
+        case 2:
+            b = cpu->P;
+            break;
+        case 3:
+            b = cpu->P >> 1;
+            break;
+        default:
+            break;
+    }
+    b &= 0x01;
+    if (a == b) {
+        cpu->PC = cpu->PC + cpu->op_eval;
+    }
+}
+
+// flags
+void ins_clc() {
+    // Clear Carry
+    cpu_clear_flag(cpu, "C");
+}
+void ins_sec() {
+    // Set Carry
+    cpu_set_flag(cpu, "C");
+}
+void ins_cli() {
+    // Clear Interrupt
+    cpu_clear_flag(cpu, "I");
+}
+void ins_sei() {
+    // Set Interrupt
+    cpu_set_flag(cpu, "I");
+}
+void ins_clv() {
+    // Clear Overflow
+    cpu_clear_flag(cpu, "V");
+}
+// decimal flag is unused in the NES, check if there are inconsistencies 
+// in register values
+void ins_cld() {
+    // Clear Decimal
+    cpu_clear_flag(cpu, "D");
+}
+void ins_sed() {
+    // Set Decimal
+    cpu_set_flag(cpu, "D");
+}
+
+// transfer value instructions
+void ins_tax() {
+    // A to X
+    cpu->X = cpu->A;
+}
+void ins_txa() {
+    // X to A
+    cpu->A = cpu->X;
+}
+void ins_tay() {
+    // A to Y
+    cpu->Y = cpu->A;
+}
+void ins_tya() {
+    // Y to A
+    cpu->A = cpu->Y;
+}
+void ins_tsx() {
+    // S to X
+    cpu->X = cpu->S;
+}
+void ins_txs() {
+    // X to S
+    cpu->S = cpu->X;
+}
+
+// stack
+void ins_pha() {
+    // Push Accumulator to stack
+    cpu_stack_pushint8(cpu, cpu->A);
+}
+void ins_pla() {
+    // Pull Accumulator from stack
+    cpu->A = cpu_stack_popint8(cpu);
+}
+void ins_pha() {
+    // Push Status to stack
+    cpu_stack_pushint8(cpu, cpu->P);
+}
+void ins_pla() {
+    // Pull Status from stack
+    cpu->P = cpu_stack_popint8(cpu);
+}
+
+// others
+void ins_jsr() {
+    // Jump to subroutine
+    cpu_stack_pushint16(cpu, cpu->PC - 1);
+}
+void ins_rts() {
+    // Return from subroutine
+    cpu->PC = cpu_stack_popint16(cpu) + 1;
+}
+void ins_nop() {
+    // No operation
+}
+void ins_rti() {
+    // Return from Interrupt
+    // rti pulls status and program counter (in that order) from stack
+    cpu->P = cpu_stack_popint8(cpu);
+    cpu->PC = cpu_stack_popint16(cpu);
+}

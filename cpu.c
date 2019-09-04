@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include <stdio.h>
 
+// private functions
 char _get_flag_bit(char flag)
 {
     /*
@@ -38,6 +39,7 @@ char _get_flag_bit(char flag)
     return bit;
 }
 
+// flag functions
 void cpu_set_flag(CPU* cpu, char flag)
 {
     unsigned int bit = _get_flag_bit(flag);
@@ -58,6 +60,7 @@ void cpu_clear_flag(CPU* cpu, char flag)
 
 }
 
+// stack functions
 void cpu_stack_pushint8(CPU* cpu, unsigned int val)
 {
     cpu->SP--;
@@ -69,14 +72,16 @@ void cpu_stack_pushint16(CPU* cpu, unsigned int val)
 
 char cpu_stack_popint8(CPU* cpu)
 {
-    mmap_getint8(cpu->mmap, 0x100 + (++cpu->SP));
+    return mmap_getint8(cpu->mmap, 0x100 + (++cpu->SP));
 }
 short cpu_stack_popint16(CPU* cpu)
 {
-    mmap_getint16(cpu->mmap, 0x100 + (++cpu->SP));
+    short x = mmap_getint16(cpu->mmap, 0x100 + (++cpu->SP));
     cpu->SP++;
+    return x;
 }
 
+// others
 void cpu_init(CPU* cpu, MMAP* mm)
 {
     cpu->A = 0;
@@ -90,6 +95,7 @@ void cpu_init(CPU* cpu, MMAP* mm)
     cpu->state = 1;
 }
 
+// private functions 2: electric boogaloo
 int _get_addrmd(char ins)
 {
     /*
@@ -161,47 +167,60 @@ void _parse_op(CPU* cpu)
      * should always be executed when PC is at operand address
      * i.e right after the instruction address
      *
-     * eff. address  = the address from which opcode will be retrieved
-     *                 or in which value will be modified
-     * operand value = the raw value passed as operand
-     * eval. operand = the value retrieved from address
-     *                 this is the value that's used by the opcodes
+     * e_addr  = effective address; the address from which opcode will be 
+     *           retrieved or in which value will be modified
+     * op_val  = operand value; the raw value passed as operand
+     * op_eval = evaluated operand; the value retrieved from address this 
+     *           is the value that's used by the opcodes
      *
      * TODO:
-     * - manage exception cases (JMP)
+     * - manage non-standard cases (JMP, branches, etc)
      * - manage zero page x and y cases ----- DONE
      * - decide on op_eval's position (related to carry flag operations)
      */
 
     switch (cpu->addrmd)
     {
+        /*
+         * a few notes:
+         * - the operand value is ALWAYS the raw value accompanying the instruction
+         *   in raw machine code
+         * - effective address is the address from where the code would get its value
+         *   from; this exists because some opcodes need to modify the memory in some
+         *   addressing modes
+         * - evaluated operand is the value retrieved from the effective address
+         */
         case 1:
             // zero page
-            //
+            // operand is zeropage address XX
+            // effective address is $00XX
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val;
-            //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC++;
             break;
         case 2:
             // implied / accumulator
-            //
+            // there is no operand
+            cpu->op_eval = cpu->A;
             cpu->PC++;
             break;
         case 3:
             // absolute
-            //
+            // operand is address $XXXX
+            // effective address is $XXXX
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val;
-            //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->op_val);
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC += 2;
             break;
         case 4:
             // Indirect Y
-            //
+            // operand is zeropage address $XX
+            // effective address is 16-bit address stored in $00XX + value in Y
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = mmap_getint16(cpu->mmap, cpu->op_val) + cpu->Y;
-            //cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC++;
             break;
         case 5:
@@ -211,6 +230,9 @@ void _parse_op(CPU* cpu)
             cpu->e_addr = (0xFF & (cpu->op_val + cpu->X));
             // e_addry only exists because LDX uses Y to index and not X
             cpu->e_addry = (0xFF & (cpu->op_val + cpu->Y));
+            // NOTE: op_eval does NOT account for Y indexing because it is only
+            // used for one instruction, LDX
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC++;
             break;
         case 6:
@@ -218,6 +240,7 @@ void _parse_op(CPU* cpu)
             //
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val + cpu->Y;
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC += 2;
             break;
         case 7:
@@ -225,6 +248,7 @@ void _parse_op(CPU* cpu)
             //
             cpu->op_val = mmap_getint16(cpu->mmap, cpu->PC);
             cpu->e_addr = cpu->op_val + cpu->X;
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC += 2;
             break;
         case 8:
@@ -239,6 +263,7 @@ void _parse_op(CPU* cpu)
             //
             cpu->op_val = mmap_getint8(cpu->mmap, cpu->PC);
             cpu->e_addr = mmap_getint16(cpu->mmap, 0xFF & (cpu->op_val + cpu->X));
+            cpu->op_eval = mmap_getint8(cpu->mmap, cpu->e_addr);
             cpu->PC++;
             break;
         default:

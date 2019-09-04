@@ -43,6 +43,7 @@ void ins_nop() {
  * - implement flags
  * - implement non-standard instructions (branching, flag clr)
  * - refactor code (VERY VERY IMPORTANT - SLAP AUTHOR IN THE FACE IF NOT DONE YET)
+ * - link to cpu structure
  */
 
 void ins_ora() {
@@ -105,6 +106,17 @@ void ins_lda() {
 
 void ins_cmp() {
     // Compare memory with accumulator
+    // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
+    cpu_set_flag(cpu, "C");
+    int r = (cpu->A + (cpu->P & 1) + cpu->op_eval);
+    // 9th bit of r is the carry bit
+    if (r & ~(1 << 8)) {
+        cpu_set_flag(cpu, "C");
+    }
+    else {
+        cpu_clear_flag(cpu, "C");
+    }
+
 }
 
 void ins_sbc() {
@@ -143,8 +155,21 @@ void ins_bit() {
     // Test bits in mem with accumulator
 }
 
-void ins_jmp() {}
-void ins_jmpabs() {}
+void ins_jmp() {
+    // Regular Jump (indirect)
+    // NOTE: Indirect addressing has not been implemented yet
+    // This is only theoretical as JMP is the only instruction to use it
+    char lbs = cpu->e_addr & 0xFF;
+    char hbs = (cpu->e_addr >> 8) & 0xFF;
+    char lbd = mmap_getint8(cpu->mmap, (hbs << 8) + lbs);
+    lbs++;
+    char hbd = mmap_getint8(cpu->mmap, (hbs << 8) + lbs);
+    cpu->PC = (hbs << 8) + lbs;
+}
+void ins_jmpabs() {
+    // Absolute address jump
+    cpu->PC = cpu->e_addr;
+}
 void ins_sty() {
     // Store Y in memory
     mmap_setint8(cpu->mmap, cpu->e_addr, cpu->X);
@@ -153,8 +178,32 @@ void ins_ldy() {
     // Load in Y
     cpu->Y = cpu->op_eval;
 }
-void ins_cpy() {}
-void ins_cpx() {}
+void ins_cpy() {
+    // Compare with Y
+    // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
+    cpu_set_flag(cpu, "C");
+    int r = (cpu->Y + (cpu->P & 1) + cpu->op_eval);
+    // 9th bit of r is the carry bit
+    if (r & ~(1 << 8)) {
+        cpu_set_flag(cpu, "C");
+    }
+    else {
+        cpu_clear_flag(cpu, "C");
+    }
+}
+void ins_cpx() {
+    // Compare with X
+    // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
+    cpu_set_flag(cpu, "C");
+    int r = (cpu->X + (cpu->P & 1) + cpu->op_eval);
+    // 9th bit of r is the carry bit
+    if (r & ~(1 << 8)) {
+        cpu_set_flag(cpu, "C");
+    }
+    else {
+        cpu_clear_flag(cpu, "C");
+    }
+}
 
 void ins_asl() {
     // shift left by one bit; old bit 7 is stored in carry

@@ -70,10 +70,10 @@ void ins_adc() {
     int r = (cpu->A + (cpu->P & 1) + cpu->op_eval);
     // 9th bit of r is the carry bit
     if (r & ~(1 << 8)) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     else {
-        cpu_clear_flag(cpu, "C");
+        cpu_clear_flag(cpu, 'C');
     }
     // overflow bit is set if
     // - sign bit of both initial operands are same to each other
@@ -85,7 +85,7 @@ void ins_adc() {
         // no overflow
     }
     else {
-        cpu_set_flag(cpu, "V");
+        cpu_set_flag(cpu, 'V');
     }
     cpu->A = 0xFF & r;
 }
@@ -103,14 +103,14 @@ void ins_lda() {
 void ins_cmp() {
     // Compare memory with accumulator
     // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
-    cpu_set_flag(cpu, "C");
+    cpu_set_flag(cpu, 'C');
     int r = (cpu->A + (cpu->P & 1) + cpu->op_eval);
     // 9th bit of r is the carry bit
     if (r & ~(1 << 8)) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     else {
-        cpu_clear_flag(cpu, "C");
+        cpu_clear_flag(cpu, 'C');
     }
 
 }
@@ -127,10 +127,10 @@ void ins_sbc() {
     int r = (cpu->A + (cpu->P & 1) + ~(cpu->op_eval));
     // 9th bit of r is the carry bit
     if (r & ~(1 << 8)) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     else {
-        cpu_clear_flag(cpu, "C");
+        cpu_clear_flag(cpu, 'C');
     }
     // overflow bit is set if
     // - sign bit of both initial operands are same to each other
@@ -142,7 +142,7 @@ void ins_sbc() {
         // no overflow
     }
     else {
-        cpu_set_flag(cpu, "V");
+        cpu_set_flag(cpu, 'V');
     }
     cpu->A = 0xFF & r;
 }
@@ -153,24 +153,24 @@ void ins_bit() {
     // if the result (which is not stored anywhere) is zero then Zero flag is set
     // and bit 7 of memory sets N flag while bit 6 sets overflow flag
     if (cpu->A & cpu->op_eval) {
-        cpu_set_flag(cpu, "Z");
+        cpu_set_flag(cpu, 'Z');
     }
     else {
-        cpu_clear_flag(cpu, "Z");
+        cpu_clear_flag(cpu, 'Z');
     }
     if ((cpu->op_eval >> 6) & 0x01) {
         // bit 6 is set, meaning overflow will be set
-        cpu_set_flag(cpu, "V");
+        cpu_set_flag(cpu, 'V');
     }
     else {
-        cpu_clear_flag(cpu, "V");
+        cpu_clear_flag(cpu, 'V');
     }
     if ((cpu->op_eval >> 7) & 0x01) {
         // bit 7 is set, meaning negative will be set
-        cpu_set_flag(cpu, "N");
+        cpu_set_flag(cpu, 'N');
     }
     else {
-        cpu_clear_flag(cpu, "N");
+        cpu_clear_flag(cpu, 'N');
     }
 }
 
@@ -200,34 +200,34 @@ void ins_ldy() {
 void ins_cpy() {
     // Compare with Y
     // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
-    cpu_set_flag(cpu, "C");
+    cpu_set_flag(cpu, 'C');
     int r = (cpu->Y + (cpu->P & 1) + cpu->op_eval);
     // 9th bit of r is the carry bit
     if (r & ~(1 << 8)) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     else {
-        cpu_clear_flag(cpu, "C");
+        cpu_clear_flag(cpu, 'C');
     }
 }
 void ins_cpx() {
     // Compare with X
     // WARNING: THIS IS COMPLETELY UNTESTED AND BASED PURELY OFF OF THEORY
-    cpu_set_flag(cpu, "C");
+    cpu_set_flag(cpu, 'C');
     int r = (cpu->X + (cpu->P & 1) + cpu->op_eval);
     // 9th bit of r is the carry bit
     if (r & ~(1 << 8)) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     else {
-        cpu_clear_flag(cpu, "C");
+        cpu_clear_flag(cpu, 'C');
     }
 }
 
 void ins_asl() {
     // shift left by one bit; old bit 7 is stored in carry
     if (cpu->op_eval & 0x80) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     if (cpu->addrmd == 2) {
         cpu->A = cpu->A << 1;
@@ -250,7 +250,7 @@ void ins_rol() {
 void ins_lsr() {
     // shift right one bit, old bit 0 is stored in carry
     if (cpu->op_eval & 0x01) {
-        cpu_set_flag(cpu, "C");
+        cpu_set_flag(cpu, 'C');
     }
     if (cpu->addrmd == 2) {
         cpu->A = cpu->A >> 1;
@@ -346,33 +346,33 @@ void ins_branch() {
 // flags
 void ins_clc() {
     // Clear Carry
-    cpu_clear_flag(cpu, "C");
+    cpu_clear_flag(cpu, 'C');
 }
 void ins_sec() {
     // Set Carry
-    cpu_set_flag(cpu, "C");
+    cpu_set_flag(cpu, 'C');
 }
 void ins_cli() {
     // Clear Interrupt
-    cpu_clear_flag(cpu, "I");
+    cpu_clear_flag(cpu, 'I');
 }
 void ins_sei() {
     // Set Interrupt
-    cpu_set_flag(cpu, "I");
+    cpu_set_flag(cpu, 'I');
 }
 void ins_clv() {
     // Clear Overflow
-    cpu_clear_flag(cpu, "V");
+    cpu_clear_flag(cpu, 'V');
 }
 // decimal flag is unused in the NES, check if there are inconsistencies 
 // in register values
 void ins_cld() {
     // Clear Decimal
-    cpu_clear_flag(cpu, "D");
+    cpu_clear_flag(cpu, 'D');
 }
 void ins_sed() {
     // Set Decimal
-    cpu_set_flag(cpu, "D");
+    cpu_set_flag(cpu, 'D');
 }
 
 // transfer value instructions
@@ -410,11 +410,11 @@ void ins_pla() {
     // Pull Accumulator from stack
     cpu->A = cpu_stack_popint8(cpu);
 }
-void ins_pha() {
+void ins_php() {
     // Push Status to stack
     cpu_stack_pushint8(cpu, cpu->P);
 }
-void ins_pla() {
+void ins_plp() {
     // Pull Status from stack
     cpu->P = cpu_stack_popint8(cpu);
 }
@@ -436,4 +436,9 @@ void ins_rti() {
     // rti pulls status and program counter (in that order) from stack
     cpu->P = cpu_stack_popint8(cpu);
     cpu->PC = cpu_stack_popint16(cpu);
+}
+
+//interrupt functions
+void ins_brk() {
+    //-------
 }

@@ -19,3 +19,5 @@ unsigned short mmap_getint16(MMAP* mmap, unsigned short idx);
 
 void mmap_setint8(MMAP* self, unsigned short idx, unsigned int val);
 void mmap_setint16(MMAP* self, unsigned short idx, unsigned int val);
+
+void mmap_load_ram(MMAP* self, void* src, int start, int n);

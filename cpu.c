@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "debug.h"
 #include <stdio.h>
 
 // private functions
@@ -61,7 +62,6 @@ void cpu_clear_flag(CPU* cpu, char flag)
     {
         cpu->P &= ~(1 << bit);
     }
-
 }
 
 // stack functions
@@ -159,17 +159,16 @@ int _get_addrmd(char ins)
         // mode is implied
         am = 2;
     }
-    else if
-    (
-        ins == 0x8A ||
-        ins == 0x9A ||
-        ins == 0xAA ||
-        ins == 0xBA ||
-        ins == 0xCA ||
-        ins == 0xEA ||
-        ins == 0x00 ||
-        ins == 0x20 ||
-        ins == 0x40 ||
+    else if (
+        ins == 0x8A || 
+        ins == 0x9A || 
+        ins == 0xAA || 
+        ins == 0xBA || 
+        ins == 0xCA || 
+        ins == 0xEA || 
+        ins == 0x00 || 
+        ins == 0x20 || 
+        ins == 0x40 || 
         ins == 0x60
     )
     {
@@ -187,10 +186,9 @@ int _get_addrmd(char ins)
 
 void _exec_opc(CPU* cpu)
 {
-    /*
-     * Executes opcode based on opcode type in cur_op
-     */
-
+    // Executes opcode based on opcode type in cur_op
+    printf("in _exec_opc: %2x\n", cpu->cur_op);
+    print_opc_info(cpu->cur_op);
 }
 
 void _parse_op(CPU* cpu)
@@ -213,6 +211,7 @@ void _parse_op(CPU* cpu)
      * - decide on op_eval's position (related to carry flag operations)
      */
 
+    printf("Entered _parse_op\n");
     switch (cpu->addrmd)
     {
         /*
@@ -223,7 +222,8 @@ void _parse_op(CPU* cpu)
          *   from; this exists because some opcodes need to modify the memory in some
          *   addressing modes
          * - evaluated operand is the value retrieved from the effective address
-         * - PC should be at the address AFTER the instruction's address
+         * - PC should be pointing to the NEXT instruction after the one being executed
+         *   (branching is exempt from this, as branching is handled in _exec_opc)
          */
         case 1:
             // zero page
@@ -238,7 +238,7 @@ void _parse_op(CPU* cpu)
             // implied / accumulator
             // there is no operand
             cpu->op_eval = cpu->A;
-            cpu->PC++;
+            // PC is not incremented here
             break;
         case 3:
             // absolute
@@ -331,11 +331,12 @@ void cpu_cycle(CPU* cpu)
     // get addressing mode and opcode
     cpu->addrmd = _get_addrmd(ins);
     cpu->cur_op = ins;
-    cpu->state = mmap_getint8(cpu->mmap, cpu->PC);
+    //cpu->state = mmap_getint8(cpu->mmap, cpu->PC);
     // get operand value and effective address
     cpu->PC++;
     _parse_op(cpu);
     // execute opcode
     // NOTE: at this point the PC will point to the NEXT instruction, not the one being executed
     _exec_opc(cpu);
+    //printf("After _parse_op:\noperand value: %d\n", cpu->op_val);
 }

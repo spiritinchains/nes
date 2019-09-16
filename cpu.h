@@ -9,13 +9,13 @@ typedef struct _cpu {
     char P;         // flags: N V - B D I Z C
     char SP;        // stack pointer
 
-    char op_val;    // raw operand value - the value actually passed to the code
+    int op_val;    // raw operand value - the value actually passed to the code
     char op_eval;   // evaluated operand value - the value that the instruction uses
     short e_addr;    // effective address
     short e_addry;   // effective address, y indexed (special use case)
     char addrmd;    // addressing mode
     char cur_op;    // current opcode
-    
+
     /*
      * 0001 1 - zero page
      * 0010 2 - Accumulator / Implied

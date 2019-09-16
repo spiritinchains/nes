@@ -316,6 +316,7 @@ void ins_branch() {
      * 01 - v
      * 10 - c
      * 11 - z
+     * 
      */
     char x = (cpu->cur_op >> 5);
     char a = x & 0x01;

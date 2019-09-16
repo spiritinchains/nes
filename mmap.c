@@ -1,5 +1,6 @@
 #include "mmap.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void mmap_init(MMAP* self)
 {
@@ -9,8 +10,11 @@ void mmap_init(MMAP* self)
     {
         mmap_link_memrg(self, i * 2048, self->ram, 0x800);
     }
+    // dummy memory regions assigned for testing
+    void* dummy = malloc(0xFFFF);
+    mmap_link_memrg(self, 0x2000, dummy, 0xE000);
     /*
-     * TODO: 
+     * TODO:
      * Add and mirror PPU registers
      * Add other IO registers
      * Think about how to implement ROM space
@@ -71,4 +75,19 @@ void mmap_setint16(MMAP* self, unsigned short idx, unsigned int val)
     // NOTE: endianness is not enforced here and might depend on processor architecture
     // leading to miscompilations on different archs; we *should* be fine on x86
     *(unsigned short*)mmap_getptr(self, idx) = (unsigned short)val;
+}
+
+void mmap_load_ram(MMAP* self, void* src, int start, int n)
+{
+    /*
+     * Loads n number of bytes from location src into position start of ram
+     */
+    printf("%d %d %d\n", src, start, n);
+    int i;
+    for (i = 0; i < n; i++) {
+        // TODO: fix buffer overflow error
+        self->ram[start + i] = *(char*)src;
+        src++;
+    }
+    printf("\n");
 }

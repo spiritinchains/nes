@@ -1,11 +1,3 @@
 .vscode/
 misc/
-in
-in.bak
-*.exe
-bin/
-obj/
-*.cbp
-*.depend
-*.layout
-instructions.txt
+build/

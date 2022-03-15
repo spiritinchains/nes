@@ -1,5 +1,6 @@
 
 #include "cpu.h"
+#include "cpubus.h"
 
 #include <assert.h>
 
@@ -222,6 +223,8 @@ flags_pack(struct cpu_flags flags)
     return r;
 }
 
+struct cpu CPU;
+
 void 
 cpu_init()
 {
@@ -230,20 +233,84 @@ cpu_init()
     CPU.Y = 0;
     CPU.S = 0xFF;
 
-    CPU.PC = 0;
+    CPU.PC = 0xC000;
 
     CPU.state = 0;
     CPU.rem_bytes = 0;
     CPU.rem_cycles = 0;
 
-    CPU.cur_op = 0;
-    CPU.data = 0;
-    CPU.addr = 0;
+    CPU.IR = 0;
+    CPU.addr_mode = 0;
 
-    CPU.addr_md = 0;
+    CPU.addr = 0;
+    CPU.data = 0;
+
+    CPU.e_addr = 0;
 }
 
 void
 cpu_cycle()
 {
 }
+
+
+/* opcodes */
+
+
+void ins_adc() { }
+void ins_and() { }
+void ins_asl() { }
+void ins_bcc() { }
+void ins_bcs() { }
+void ins_beq() { }
+void ins_bit() { }
+void ins_bmi() { }
+void ins_bne() { }
+void ins_bpl() { }
+void ins_brk() { }
+void ins_bvc() { }
+void ins_bvs() { }
+void ins_clc() { }
+void ins_cld() { }
+void ins_cli() { }
+void ins_clv() { }
+void ins_cmp() { }
+void ins_cpx() { }
+void ins_cpy() { }
+void ins_dec() { }
+void ins_dex() { }
+void ins_dey() { }
+void ins_eor() { }
+void ins_inc() { }
+void ins_inx() { }
+void ins_iny() { }
+void ins_jmp() { }
+void ins_jsr() { }
+void ins_lda() { }
+void ins_ldx() { }
+void ins_ldy() { }
+void ins_lsr() { }
+void ins_nop() { }
+void ins_ora() { }
+void ins_pha() { }
+void ins_php() { }
+void ins_pla() { }
+void ins_plp() { }
+void ins_rol() { }
+void ins_ror() { }
+void ins_rti() { }
+void ins_rts() { }
+void ins_sbc() { }
+void ins_sec() { }
+void ins_sed() { }
+void ins_sei() { }
+void ins_sta() { }
+void ins_stx() { }
+void ins_sty() { }
+void ins_tax() { }
+void ins_tay() { }
+void ins_tsx() { }
+void ins_txa() { }
+void ins_txs() { }
+void ins_tya() { }
+

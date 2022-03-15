@@ -1,13 +1,13 @@
 
-# not super 'robust' but it gets the job done
+.PHONY: all clean test
 
-.PHONY: run clean
+all: build/nesemu
 
 build/nesemu: src/*.c include/*.h
 	gcc -Iinclude src/*.c -o build/nesemu
 
-run: build/nesemu
-	build/nesemu
-
 clean:
 	rm build/nesemu
+
+test: all
+	build/nesemu misc/roms/nestest.nes

@@ -107,11 +107,13 @@ struct cpu
 
 	/* internal */
 
+	uint8_t IR;					// Current Opcode
+	enum addr_modes addr_mode;	// Addressing Mode
 	int state;
 	int rem_cycles;
 	int rem_bytes;
-	enum addr_modes addr_md;	// Addressing Mode
-	uint8_t cur_op;				// Current Opcode
+
+	uint16_t e_addr;
 	uint16_t addr;
 	uint8_t data;
 

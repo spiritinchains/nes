@@ -1,4 +1,6 @@
 
+#include "timing.h"
+
 #include <time.h>
 
 #define NESCLK_MASTER 46
@@ -12,12 +14,14 @@ static int count = 0;
 
 static struct timespec st, ed;
 
-void clock_start()
+void 
+clock_start()
 {
     clock_gettime(CLOCK_MONOTONIC, &st);
 }
 
-void clock_end()
+void 
+clock_end()
 {
     do {
         clock_gettime(CLOCK_MONOTONIC, &ed);
@@ -26,7 +30,8 @@ void clock_end()
 }
 
 
-int lcm(int x, int y)
+int 
+lcm(int x, int y)
 {
     int r = x * y;
     int t;
@@ -39,12 +44,14 @@ int lcm(int x, int y)
     return r / x;
 }
 
-void clock_init()
+void 
+clock_init()
 {
     NESCLK_COMMON_DIV = lcm(NESCLK_CPU_DIV, NESCLK_PPU_DIV);
 }
 
-void clock_cycle()
+void 
+clock_cycle()
 {
     count = (count + 1) % NESCLK_COMMON_DIV;
     clock_start();

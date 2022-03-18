@@ -2,9 +2,13 @@
 #include "cpu.h"
 #include "cpubus.h"
 
+#include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
-static struct opc_record opc_table[] = {
+struct cpu CPU;
+
+static struct opc_record opc_table[256] = {
     // Add with Carry
     [0x69] = { OPC_ADC, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_adc },
     [0x65] = { OPC_ADC, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_adc },
@@ -187,9 +191,237 @@ static struct opc_record opc_table[] = {
     [0xBA] = { OPC_TSX, ADDR_IMPLIED, 1, 2, 0, 0, ins_tsx },
     [0x8A] = { OPC_TXA, ADDR_IMPLIED, 1, 2, 0, 0, ins_txa },
     [0x9A] = { OPC_TXS, ADDR_IMPLIED, 1, 2, 0, 0, ins_txs },
-    [0x98] = { OPC_TYA, ADDR_IMPLIED, 1, 2, 0, 0, ins_tya },
+    [0x98] = { OPC_TYA, ADDR_IMPLIED, 1, 2, 0, 0, ins_tya }
     // TODO: add illegal opcodes
 };
+
+static char* str_mnemonics[] = {
+	[OPC_ADC] = "ADC",
+	[OPC_AND] = "AND",
+	[OPC_ASL] = "ASL",
+	[OPC_BCC] = "BCC",
+	[OPC_BCS] = "BCS",
+	[OPC_BEQ] = "BEQ",
+	[OPC_BIT] = "BIT",
+	[OPC_BMI] = "BMI",
+	[OPC_BNE] = "BNE",
+	[OPC_BPL] = "BPL",
+	[OPC_BRK] = "BRK",
+	[OPC_BVC] = "BVC",
+	[OPC_BVS] = "BVS",
+	[OPC_CLC] = "CLC",
+	[OPC_CLD] = "CLD",
+	[OPC_CLI] = "CLI",
+	[OPC_CLV] = "CLV",
+	[OPC_CMP] = "CMP",
+	[OPC_CPX] = "CPX",
+	[OPC_CPY] = "CPY",
+	[OPC_DEC] = "DEC",
+	[OPC_DEX] = "DEX",
+	[OPC_DEY] = "DEY",
+	[OPC_EOR] = "EOR",
+	[OPC_INC] = "INC",
+	[OPC_INX] = "INX",
+	[OPC_INY] = "INY",
+	[OPC_JMP] = "JMP",
+	[OPC_JSR] = "JSR",
+	[OPC_LDA] = "LDA",
+	[OPC_LDX] = "LDX",
+	[OPC_LDY] = "LDY",
+	[OPC_LSR] = "LSR",
+	[OPC_NOP] = "NOP",
+	[OPC_ORA] = "ORA",
+	[OPC_PHA] = "PHA",
+	[OPC_PHP] = "PHP",
+	[OPC_PLA] = "PLA",
+	[OPC_PLP] = "PLP",
+	[OPC_ROL] = "ROL",
+	[OPC_ROR] = "ROR",
+	[OPC_RTI] = "RTI",
+	[OPC_RTS] = "RTS",
+	[OPC_SBC] = "SBC",
+	[OPC_SEC] = "SEC",
+	[OPC_SED] = "SED",
+	[OPC_SEI] = "SEI",
+	[OPC_STA] = "STA",
+	[OPC_STX] = "STX",
+	[OPC_STY] = "STY",
+	[OPC_TAX] = "TAX",
+	[OPC_TAY] = "TAY",
+	[OPC_TSX] = "TSX",
+	[OPC_TXA] = "TXA",
+	[OPC_TXS] = "TXS",
+    [OPC_TYA] = "TYA",
+    [OPC_UNK] = "???"
+};
+
+static char* str_addr_modes[] = {
+	[ADDR_IMMEDIATE] = "#$%.2x",
+	[ADDR_IMPLIED] = "",
+	[ADDR_ACCUMULATOR] = "A",
+	[ADDR_ABSOLUTE] = "$%.4x",
+	[ADDR_ABSOLUTE_X] = "$%.4x,X",
+	[ADDR_ABSOLUTE_Y] = "$%.4x,Y",
+	[ADDR_ZEROPAGE] = "$%.2x",
+	[ADDR_ZEROPAGE_X] = "$%.2x,X",
+	[ADDR_ZEROPAGE_Y] = "$%.2x,Y",
+	[ADDR_INDIRECT] = "($%.4x)",
+	[ADDR_INDIRECT_X] = "($%.2x,X)",
+	[ADDR_INDIRECT_Y] = "($%.2x),Y",
+	[ADDR_RELATIVE] = "$%.2x"
+};
+
+
+void
+print_opc(uint16_t addr)
+{
+    uint8_t bytes[4];
+
+    char opcode_full[64] = "";
+    char opcode_mnemonic[4] = "";
+    char opcode_operands[16] = "";
+    char opcode_bytes[16] = "";
+
+    for (int i = 0; i < 4; i++)
+    {
+        bytes[i] = read8(addr + i);
+    }
+
+    int len = opc_table[bytes[0]].bytes;
+
+    for (int i = 0; i < len; i++)
+    {
+        char tmp[4];
+        sprintf(tmp, "%.2X ", bytes[i]);
+        strcat(opcode_bytes, tmp);
+    }
+
+    enum addr_modes am = opc_table[bytes[0]].addr_mode;
+
+    switch (am)
+    {
+        case ADDR_ABSOLUTE:
+        case ADDR_ABSOLUTE_X:
+        case ADDR_ABSOLUTE_Y:
+        case ADDR_INDIRECT:
+            sprintf(opcode_operands, str_addr_modes[am], *(uint16_t*)(&bytes[1]));
+            break;
+        case ADDR_IMMEDIATE:
+        case ADDR_INDIRECT_X:
+        case ADDR_INDIRECT_Y:
+        case ADDR_ZEROPAGE:
+        case ADDR_ZEROPAGE_X:
+        case ADDR_ZEROPAGE_Y:
+        case ADDR_RELATIVE:
+            sprintf(opcode_operands, str_addr_modes[am], *(uint8_t*)(&bytes[1]));
+            break;
+        case ADDR_IMPLIED:
+        case ADDR_ACCUMULATOR:
+            sprintf(opcode_operands, str_addr_modes[am]);
+            break;
+        default:
+            sprintf(opcode_operands, "");
+            break;
+    }
+
+    sprintf(opcode_mnemonic, "%s ", str_mnemonics[opc_table[bytes[0]].mnemonic]);
+    strcat(opcode_full, opcode_mnemonic);
+    strcat(opcode_full, opcode_operands);
+
+    const char fmtstr[] = 
+        "%.4X: %-10s %-20s "
+        "A: %.2X X: %.2X Y: %.2X S: %.2X "
+        "flags C: %d Z: %d V: %d N: %d I: %d\n";
+
+    printf(
+        fmtstr, 
+        addr, opcode_bytes, opcode_full, 
+        CPU.A, CPU.X, CPU.Y, CPU.S, 
+        CPU.flags.C, CPU.flags.Z, CPU.flags.V, CPU.flags.N, CPU.flags.I
+    );
+    fflush(stdout);
+}
+
+void
+print_stack()
+{
+    for (int i = 0x0100; i < 0x0200; i++)
+    {
+        printf("%.4X: %.2X", i, read8(i));
+        if ((i & 0xFF) == CPU.S)
+            printf("  <-- Stack Pointer");
+        printf("\n");
+    }
+}
+
+void
+get_operands()
+{
+    uint16_t operand_addr = CPU.PC + 1;
+    switch (CPU.addr_mode)
+    {
+    case ADDR_ABSOLUTE:
+        CPU.e_addr = read16(operand_addr);
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_ABSOLUTE_X:
+        CPU.e_addr = read16(operand_addr);
+        CPU.e_addr += CPU.X;
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_ABSOLUTE_Y:
+        CPU.e_addr = read16(operand_addr);
+        CPU.e_addr += CPU.Y;
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_ACCUMULATOR:
+        CPU.data = CPU.A;
+        break;
+    case ADDR_IMPLIED:
+        break;
+    case ADDR_IMMEDIATE:
+        CPU.data = read8(operand_addr);
+        break;
+    case ADDR_INDIRECT:
+        CPU.addr = read16(operand_addr);
+        CPU.e_addr = read16(CPU.addr);
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_INDIRECT_X:
+        CPU.e_addr = (read8(operand_addr) + CPU.X);
+        CPU.e_addr &= 0x00FF;
+        CPU.e_addr = read16(CPU.e_addr);
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_INDIRECT_Y:
+        CPU.e_addr = read8(operand_addr);
+        CPU.e_addr = read16(CPU.e_addr);
+        CPU.e_addr += CPU.Y;
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_RELATIVE:
+        CPU.data = read8(operand_addr);
+        break;
+    case ADDR_ZEROPAGE:
+        CPU.e_addr = read8(operand_addr);
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_ZEROPAGE_X:
+        CPU.e_addr = read8(operand_addr);
+        CPU.e_addr += CPU.X;
+        CPU.e_addr &= 0x00FF;
+        CPU.data = read8(CPU.e_addr);
+        break;
+    case ADDR_ZEROPAGE_Y:
+        CPU.e_addr = read8(operand_addr);
+        CPU.e_addr += CPU.Y;
+        CPU.e_addr &= 0x00FF;
+        CPU.data = read8(CPU.e_addr);
+        break;            
+    default:
+        assert(0);
+    }
+}
 
 struct cpu_flags 
 flags_unpack(uint8_t flags)
@@ -198,7 +430,8 @@ flags_unpack(uint8_t flags)
 
     r.N = (flags >> 7) & 1;
     r.V = (flags >> 6) & 1;
-    r.B = (flags >> 4) & 1;
+    r.unused = 1;               // always 1
+    // r.B = (flags >> 4) & 1;
     r.D = (flags >> 3) & 1;
     r.I = (flags >> 2) & 1;
     r.Z = (flags >> 1) & 1;
@@ -214,6 +447,7 @@ flags_pack(struct cpu_flags flags)
 
     r |= flags.N << 7;
     r |= flags.V << 6;
+    r |= 1 << 5;        // always 1
     r |= flags.B << 4;
     r |= flags.D << 3;
     r |= flags.I << 2;
@@ -222,8 +456,6 @@ flags_pack(struct cpu_flags flags)
 
     return r;
 }
-
-struct cpu CPU;
 
 void 
 cpu_init()
@@ -251,66 +483,565 @@ cpu_init()
 void
 cpu_cycle()
 {
+    /*
+     * states:
+     * 0: opcode not read, read opcode
+     * 1: opcode byte read, execute opcode
+     * 2: waste time until cycle quota full
+     */
+
+    // TODO: make cycle accurate
+
+    switch(CPU.state)
+    {
+    case 0:
+        // print_opc(CPU.PC);
+        CPU.IR = read8(CPU.PC);
+        CPU.addr_mode = opc_table[CPU.IR].addr_mode;
+        CPU.rem_bytes = opc_table[CPU.IR].bytes;
+        CPU.rem_cycles = opc_table[CPU.IR].clock - 1;
+        get_operands();
+        CPU.state = 1;
+        break;
+    case 1:
+        opc_table[CPU.IR].instruction();
+        CPU.rem_cycles--;
+        CPU.state = (CPU.rem_cycles > 0) ? 2 : 0;
+        break;
+    case 2:
+        if (CPU.rem_cycles > 0)
+            CPU.rem_cycles--;
+        else
+            CPU.state = 0;
+        break;
+    default:
+        assert(0);
+        break;
+    }
+}
+
+void
+stack_push(uint8_t x)
+{
+    uint16_t stack_addr = 0x0100 | CPU.S;
+    write8(stack_addr, x);
+    CPU.S--;
+}
+
+uint8_t
+stack_pull()
+{
+    CPU.S++;
+    uint16_t stack_addr = 0x0100 | CPU.S;
+    uint8_t r = read8(stack_addr);
+    return r;
 }
 
 
 /* opcodes */
 
+// set Z and N flags based on 8-bit signed value
+void setnz(int8_t val)
+{
+    CPU.flags.Z = (val == 0);
+    CPU.flags.N = (val < 0);
+    return;
+}
 
-void ins_adc() { }
-void ins_and() { }
-void ins_asl() { }
-void ins_bcc() { }
-void ins_bcs() { }
-void ins_beq() { }
-void ins_bit() { }
-void ins_bmi() { }
-void ins_bne() { }
-void ins_bpl() { }
-void ins_brk() { }
-void ins_bvc() { }
-void ins_bvs() { }
-void ins_clc() { }
-void ins_cld() { }
-void ins_cli() { }
-void ins_clv() { }
-void ins_cmp() { }
-void ins_cpx() { }
-void ins_cpy() { }
-void ins_dec() { }
-void ins_dex() { }
-void ins_dey() { }
-void ins_eor() { }
-void ins_inc() { }
-void ins_inx() { }
-void ins_iny() { }
-void ins_jmp() { }
-void ins_jsr() { }
-void ins_lda() { }
-void ins_ldx() { }
-void ins_ldy() { }
-void ins_lsr() { }
-void ins_nop() { }
-void ins_ora() { }
-void ins_pha() { }
-void ins_php() { }
-void ins_pla() { }
-void ins_plp() { }
-void ins_rol() { }
-void ins_ror() { }
-void ins_rti() { }
-void ins_rts() { }
-void ins_sbc() { }
-void ins_sec() { }
-void ins_sed() { }
-void ins_sei() { }
-void ins_sta() { }
-void ins_stx() { }
-void ins_sty() { }
-void ins_tax() { }
-void ins_tay() { }
-void ins_tsx() { }
-void ins_txa() { }
-void ins_txs() { }
-void ins_tya() { }
+/* Arithmetic Operations */
 
+uint8_t adcsbc(uint8_t a, uint8_t b, uint8_t c)
+{
+    uint16_t r = a + b + c;
+    
+    // vflag1 = 1 if both operands have same sign
+    int vflag1 = !(((a ^ b) >> 7) & 1);
+    // vflag2 = 1 if result and accumulator have different sign
+    int vflag2 = (((a ^ r) >> 7) & 1);
+
+    CPU.flags.C = (r >> 8) & 1;
+    CPU.flags.V = (vflag1 && vflag2);
+
+    return (r & 0xFF);
+}
+
+void ins_adc()
+{
+    CPU.A = adcsbc(CPU.A, CPU.data, CPU.flags.C);
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sbc()
+{
+    CPU.A = adcsbc(CPU.A, ~CPU.data, CPU.flags.C);
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+/* Bitwise operations */
+
+void ins_and() 
+{
+    CPU.A &= CPU.data;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_ora()
+{
+    CPU.A |= CPU.data;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_eor()
+{
+    CPU.A ^= CPU.data;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_asl() 
+{
+    CPU.flags.C = (CPU.data >> 7) & 1;
+    CPU.data <<= 1;
+
+    if (CPU.addr_mode == ADDR_ACCUMULATOR)
+        CPU.A = CPU.data;
+    else
+        write8(CPU.e_addr, CPU.data);
+
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_lsr()
+{
+    CPU.flags.C = CPU.data & 1;
+    CPU.data >>= 1;
+
+    if (CPU.addr_mode == ADDR_ACCUMULATOR)
+        CPU.A = CPU.data;
+    else
+        write8(CPU.e_addr, CPU.data);
+
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_rol()
+{
+    uint16_t r = CPU.data;
+    r <<= 1;
+    r |= CPU.flags.C;
+    CPU.flags.C = (r >> 8) & 1;
+    CPU.data = r & 0xFF;
+
+    if (CPU.addr_mode == ADDR_ACCUMULATOR)
+        CPU.A = CPU.data;
+    else
+        write8(CPU.e_addr, CPU.data);
+
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_ror()
+{
+    uint16_t r = CPU.data;
+    r |= CPU.flags.C << 8;
+    CPU.flags.C = r & 1;
+    r >>= 1;
+    CPU.data = r & 0xFF;
+
+    if (CPU.addr_mode == ADDR_ACCUMULATOR)
+        CPU.A = CPU.data;
+    else
+        write8(CPU.e_addr, CPU.data);
+
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+
+/* Branching instructions */
+
+void branch()
+{
+    int8_t offset = CPU.data;   // convert to signed
+    CPU.PC += offset + 2;
+}
+
+void ins_bcc() 
+{
+    if (CPU.flags.C == 0)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bcs() 
+{
+    if (CPU.flags.C == 1)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_beq() 
+{
+    if (CPU.flags.Z == 1)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bmi() 
+{
+    if (CPU.flags.N == 1)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bne() 
+{
+    if (CPU.flags.Z == 0)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bpl() 
+{
+    if (CPU.flags.N == 0)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bvc() 
+{
+    if (CPU.flags.V == 0)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bvs() 
+{
+    if (CPU.flags.V == 1)
+        branch();
+    else
+        CPU.PC += CPU.rem_bytes;
+}
+
+/* Flag set/clear instructions */
+
+void ins_clc() 
+{
+    CPU.flags.C = 0;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_cld() 
+{
+    CPU.flags.D = 0;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_cli() 
+{
+    CPU.flags.I = 0;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_clv() 
+{
+    CPU.flags.V = 0;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sec()
+{
+    CPU.flags.C = 1;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sed()
+{
+    CPU.flags.D = 1;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sei()
+{
+    CPU.flags.I = 1;
+    CPU.PC += CPU.rem_bytes;
+}
+
+
+/* Comparison operations */
+
+void compare(uint8_t a, uint8_t b)
+{
+    uint8_t r = a - b;
+    setnz(r);
+    CPU.flags.C = (a >= b);
+}
+
+void ins_cmp()
+{
+    compare(CPU.A, CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_cpx()
+{
+    compare(CPU.X, CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_cpy()
+{
+    compare(CPU.Y, CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+
+/* Increment/Decrement operations */
+
+void ins_dec() 
+{
+    CPU.data--;
+    write8(CPU.e_addr, CPU.data);
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_dex() 
+{
+    CPU.X--;
+    setnz(CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_dey()
+{
+    CPU.Y--;
+    setnz(CPU.Y);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_inc()
+{
+    CPU.data++;
+    write8(CPU.e_addr, CPU.data);
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_inx()
+{
+    CPU.X++;
+    setnz(CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_iny()
+{
+    CPU.Y++;
+    setnz(CPU.Y);
+    CPU.PC += CPU.rem_bytes;
+}
+
+/* Jumps and Calls */
+
+void ins_jmp()
+{
+    uint16_t jump_addr = CPU.e_addr;
+
+    // indirect jump page wraparound
+    if (CPU.addr_mode == ADDR_INDIRECT)
+    {
+        jump_addr = read8(CPU.addr);
+
+        if (CPU.addr & 0xFF == 0x00FF)
+            CPU.addr &= 0xFF00;
+        else
+            CPU.addr++;
+
+        jump_addr |= read8(CPU.addr) << 8;
+    }
+
+    CPU.PC = jump_addr;
+}
+
+void ins_jsr()
+{
+    uint16_t return_addr = CPU.PC + 2;      // one less than actual address
+    stack_push((return_addr >> 8) & 0xFF);
+    stack_push(return_addr & 0xFF);
+    CPU.PC = CPU.e_addr;
+}
+
+void ins_rts()
+{
+    CPU.PC = stack_pull();
+    CPU.PC |= stack_pull() << 8;
+    CPU.PC++;
+}
+
+
+/* Load/Store operations */
+
+void ins_lda() 
+{
+    CPU.A = CPU.data;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_ldx()
+{
+    CPU.X = CPU.data;
+    setnz(CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_ldy()
+{
+    CPU.Y = CPU.data;
+    setnz(CPU.Y);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sta()
+{
+    write8(CPU.e_addr, CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_stx()
+{
+    write8(CPU.e_addr, CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sty()
+{
+    write8(CPU.e_addr, CPU.Y);
+    CPU.PC += CPU.rem_bytes;
+}
+
+
+/* Stack instructions */
+
+void ins_pha()
+{
+    stack_push(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_php()
+{
+    stack_push(flags_pack(CPU.flags));
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_pla()
+{
+    CPU.A = stack_pull();
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_plp()
+{
+    CPU.flags = flags_unpack(stack_pull());
+    CPU.PC += CPU.rem_bytes;
+}
+
+/* Register operations */
+
+void ins_tax()
+{
+    CPU.X = CPU.A;
+    setnz(CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_tay() 
+{
+    CPU.Y = CPU.A;
+    setnz(CPU.Y);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_tsx()
+{
+    CPU.X = CPU.S;
+    setnz(CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_txa()
+{
+    CPU.A = CPU.X;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_txs()
+{
+    CPU.S = CPU.X;
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_tya()
+{
+    CPU.A = CPU.Y;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+/* Other Instructions */
+
+void ins_nop()
+{
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_bit() 
+{
+    CPU.flags.N = (CPU.data >> 7) & 1;
+    CPU.flags.V = (CPU.data >> 6) & 1;
+    CPU.flags.Z = ((CPU.data & CPU.A) == 0);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_brk()
+{
+    if (CPU.flags.I)
+        return;
+    CPU.flags.B = 1;
+    uint16_t return_addr = CPU.PC + 2;
+    stack_push((return_addr >> 8) & 0xFF);
+    stack_push(return_addr & 0xFF);
+    CPU.PC = read8(0xFFFE) | (read8(0xFFFF) << 8);
+    stack_push(flags_pack(CPU.flags));
+    CPU.flags.B = 0;
+}
+
+void ins_rti()
+{
+    CPU.flags = flags_unpack(stack_pull());
+    CPU.PC = stack_pull();
+    CPU.PC |= stack_pull() << 8;
+}
+
+/* Non-maskable Interrupt */
+void cpu_nmi()
+{
+}

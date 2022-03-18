@@ -2,32 +2,63 @@
 #include "cpubus.h"
 #include "rom.h"
 
+#include <stddef.h>
+#include <stdio.h>
+
 static uint8_t RAM[2048];
+static uint8_t blank;
+
+static uint8_t* map[0x10000];
+
+void
+bus_init()
+{
+    // RAM
+    for (int i = 0; i < 0x2000; i++)
+    {
+        map[i] = &RAM[i & 0x7FF];
+    }
+
+    for(int i = 0x2000; i < 0x8000; i++)
+    {
+        map[i] = &blank;
+    }
+
+    // TODO: do mapper stuff
+    for (int i = 0x8000; i < 0x10000; i++)
+    {
+        uint16_t idx = i - 0x8000;
+        idx &= (ROM.prg_banks > 1) ? 0xFFFF : 0x3FFF;
+        map[i] = &ROM.prg[idx];
+    }
+}
 
 uint8_t 
 read8(uint16_t addr)
 {
-    // TODO: use pointers when refactoring
-    uint8_t result;
-    if (addr < 0x2000)
-    {
-        result = RAM[addr & 0x7FF];
-    }
-    else if (addr > 0x8000 && addr < 0x10000)
-    {
-        result = ROM.prg[addr - 0x8000];
-    }
-    
-    return result;
+    return *map[addr];
 }
 
 void
 write8(uint16_t addr, uint8_t data)
 {
-    if (addr < 0x2000)
-    {
-        RAM[addr & 0x7FF] = data;
-    }
+    if (addr == 0x0002)
+        printf("FAILURE CODE 02h: %.2x\n", data);
+    if (addr == 0x0003)
+        printf("FAILURE CODE 03h: %.2x\n", data);
+    // TODO: protection for read only locations
+    *map[addr] = data;
     return;
 }
 
+uint16_t
+read16(uint16_t addr)
+{
+    uint16_t r = 0;
+
+    r = read8((addr == 0x00FF) ? 0 : (addr + 1));
+    r <<= 8;
+    r |= read8(addr);
+
+    return r;
+}

@@ -22,6 +22,7 @@ enum addr_modes
 
 enum opc_mnemonics
 {
+	OPC_UNK = 0,
 	OPC_ADC,
 	OPC_AND,
 	OPC_ASL,

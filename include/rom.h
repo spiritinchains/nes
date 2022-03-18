@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <inttypes.h>
 
 struct rom

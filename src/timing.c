@@ -1,5 +1,6 @@
 
 #include "timing.h"
+#include "cpu.h"
 
 #include <time.h>
 
@@ -57,7 +58,7 @@ clock_cycle()
     clock_start();
     if (count % NESCLK_CPU_DIV)
     {
-        // cpu cycle
+        cpu_cycle();
     }
     if (count % NESCLK_PPU_DIV)
     {

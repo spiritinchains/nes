@@ -69,8 +69,8 @@ rom_open(const char fname[])
         fread(ROM.trainer, 1, 512, romfile);
     }
 
-    size_t prg_read = fread(ROM.prg, 1, ROM.prg_banks * 16384, romfile);
-    size_t chr_read = fread(ROM.chr, 1, ROM.chr_banks * 8192, romfile);
+    size_t prg_read = fread(ROM.prg, 1, PRG_SIZE, romfile);
+    size_t chr_read = fread(ROM.chr, 1, CHR_SIZE, romfile);
 
     assert(prg_read == PRG_SIZE);
     assert(chr_read == CHR_SIZE);

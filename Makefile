@@ -3,7 +3,7 @@
 
 all: build/nesemu
 
-build/nesemu: src/*.c include/*.h
+build/nesemu: src/*.c src/*.h
 	gcc src/*.c -g -o build/nesemu -Og
 
 clean:

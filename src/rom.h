@@ -1,5 +1,6 @@
 
-#pragma once
+#ifndef ROM_H
+#define ROM_H
 
 #include <inttypes.h>
 
@@ -31,3 +32,5 @@ struct rom
 extern struct rom ROM;
 
 const struct rom* rom_open(const char []);
+
+#endif

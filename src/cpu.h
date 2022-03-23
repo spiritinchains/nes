@@ -1,5 +1,6 @@
 
-#pragma once
+#ifndef CPU_H
+#define CPU_H
 
 #include <inttypes.h>
 
@@ -194,3 +195,6 @@ void ins_tsx();
 void ins_txa();
 void ins_txs();
 void ins_tya();
+
+
+#endif

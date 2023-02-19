@@ -1,10 +1,6 @@
 
+#include "common.h"
 #include "rom.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 
 #define PRG_SIZE (ROM.prg_banks * 16384)
 #define CHR_SIZE (ROM.chr_banks * 8192)

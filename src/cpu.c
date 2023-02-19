@@ -1,10 +1,7 @@
 
+#include "common.h"
 #include "cpu.h"
 #include "cpubus.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
 
 struct cpu CPU;
 
@@ -287,7 +284,8 @@ print_opc(uint16_t addr)
         bytes[i] = read8(addr + i);
     }
 
-    int len = opc_table[bytes[0]].bytes;
+    struct opc_record cur_opcode = opc_table[bytes[0]];
+    int len = cur_opcode.bytes;
 
     for (int i = 0; i < len; i++)
     {
@@ -296,7 +294,7 @@ print_opc(uint16_t addr)
         strcat(opcode_bytes, tmp);
     }
 
-    enum addr_modes am = opc_table[bytes[0]].addr_mode;
+    enum addr_modes am = cur_opcode.addr_mode;
 
     switch (am)
     {
@@ -324,7 +322,7 @@ print_opc(uint16_t addr)
             break;
     }
 
-    sprintf(opcode_mnemonic, "%s ", str_mnemonics[opc_table[bytes[0]].mnemonic]);
+    sprintf(opcode_mnemonic, "%s ", str_mnemonics[cur_opcode.mnemonic]);
     strcat(opcode_full, opcode_mnemonic);
     strcat(opcode_full, opcode_operands);
 
@@ -485,8 +483,8 @@ cpu_cycle()
 {
     /*
      * states:
-     * 0: opcode not read, read opcode
-     * 1: opcode byte read, execute opcode
+     * 0: opcode not read, read opcode byte and pre-read operands
+     * 1: opcode byte read, fake read remaining bytes and/or execute opcode
      * 2: waste time until cycle quota full
      */
 
@@ -546,6 +544,29 @@ void setnz(int8_t val)
     CPU.flags.Z = (val == 0);
     CPU.flags.N = (val < 0);
     return;
+}
+
+void interrupt(uint16_t intvec)
+{
+    uint16_t return_addr = CPU.PC + 2;
+    stack_push((return_addr >> 8) & 0xFF);
+    stack_push(return_addr & 0xFF);
+    CPU.PC = read8(intvec) | (read8(intvec + 1) << 8);
+    stack_push(flags_pack(CPU.flags));
+}
+
+void cpu_irq()
+{
+    interrupt(0xFFFE);
+}
+
+void cpu_nmi()
+{
+    interrupt(0xFFFA);
+}
+
+void cpu_reset()
+{
 }
 
 /* Arithmetic Operations */
@@ -1026,11 +1047,7 @@ void ins_brk()
     if (CPU.flags.I)
         return;
     CPU.flags.B = 1;
-    uint16_t return_addr = CPU.PC + 2;
-    stack_push((return_addr >> 8) & 0xFF);
-    stack_push(return_addr & 0xFF);
-    CPU.PC = read8(0xFFFE) | (read8(0xFFFF) << 8);
-    stack_push(flags_pack(CPU.flags));
+    cpu_irq();
     CPU.flags.B = 0;
 }
 
@@ -1039,9 +1056,4 @@ void ins_rti()
     CPU.flags = flags_unpack(stack_pull());
     CPU.PC = stack_pull();
     CPU.PC |= stack_pull() << 8;
-}
-
-/* Non-maskable Interrupt */
-void cpu_nmi()
-{
 }

@@ -1,11 +1,9 @@
 
+#include "common.h"
 #include "cpu.h"
 #include "cpubus.h"
 #include "rom.h"
 #include "timing.h"
-
-#include <stdlib.h>
-#include <stdio.h>
 
 const char usage[] = "NES Emulator\n\nUsage:\nnesemu [ROM file]\n";
 

@@ -101,16 +101,16 @@ struct cpu
 	uint8_t A;
 	uint8_t X;
 	uint8_t Y;
-	uint8_t S;					// Stack Pointer
+	uint8_t S;						// Stack Pointer
 
 	struct cpu_flags flags;
 
-	uint16_t PC;				// Program Counter
+	uint16_t PC;					// Program Counter
 
 	/* internal */
 
-	uint8_t IR;					// Current Opcode
-	enum addr_modes addr_mode;	// Addressing Mode
+	uint8_t IR;						// Current Opcode
+	enum addr_modes addr_mode;		// Addressing Mode
 	int state;
 	int rem_cycles;
 	int rem_bytes;
@@ -127,7 +127,7 @@ struct opc_record
 	enum addr_modes addr_mode;
 	int bytes;
 	int clock;
-	int page_transition;
+	int page_transition;			// takes an extra cycle on page transition
 	int branch;
 	void (* instruction)(void);
 };

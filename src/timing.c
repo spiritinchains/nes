@@ -1,6 +1,8 @@
 
+#include "common.h"
 #include "timing.h"
 #include "cpu.h"
+#include "ppu.h"
 
 #include <time.h>
 
@@ -27,7 +29,7 @@ clock_end()
     do {
         clock_gettime(CLOCK_MONOTONIC, &ed);
     }
-    while (ed.tv_nsec - st.tv_nsec < 46);
+    while (ed.tv_nsec - st.tv_nsec < NESCLK_MASTER);
 }
 
 
@@ -62,7 +64,7 @@ clock_cycle()
     }
     if (count % NESCLK_PPU_DIV)
     {
-        // ppu cycle
+        ppu_cycle();
     }
     clock_end();
 }

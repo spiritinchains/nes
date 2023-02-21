@@ -188,8 +188,114 @@ static struct opc_record opc_table[256] = {
     [0xBA] = { OPC_TSX, ADDR_IMPLIED, 1, 2, 0, 0, ins_tsx },
     [0x8A] = { OPC_TXA, ADDR_IMPLIED, 1, 2, 0, 0, ins_txa },
     [0x9A] = { OPC_TXS, ADDR_IMPLIED, 1, 2, 0, 0, ins_txs },
-    [0x98] = { OPC_TYA, ADDR_IMPLIED, 1, 2, 0, 0, ins_tya }
-    // TODO: add illegal opcodes
+    [0x98] = { OPC_TYA, ADDR_IMPLIED, 1, 2, 0, 0, ins_tya },
+    // Illegal opcodes
+    // NOTE: may have inaccuracies
+    [0x80] = { OPC_NOP, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_nop },
+    [0x82] = { OPC_NOP, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_nop },
+    [0xC2] = { OPC_NOP, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_nop },
+    [0xE2] = { OPC_NOP, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_nop },
+    [0x89] = { OPC_NOP, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_nop },
+    [0x02] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x12] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x22] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x32] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x42] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x52] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x62] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x72] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x92] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0xB2] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0xD2] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0xF2] = { OPC_JAM, ADDR_IMPLIED, 1, 0, 0, 0, ins_jam },
+    [0x03] = { OPC_SLO, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_slo },
+    [0x13] = { OPC_SLO, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_slo },
+    [0x23] = { OPC_RLA, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_rla },
+    [0x33] = { OPC_RLA, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_rla },
+    [0x43] = { OPC_SRE, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_sre },
+    [0x53] = { OPC_SRE, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_sre },
+    [0x63] = { OPC_RRA, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_rra },
+    [0x73] = { OPC_RRA, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_rra },
+    [0x83] = { OPC_SAX, ADDR_INDIRECT_X, 2, 6, 0, 0, ins_sax },
+    [0x93] = { OPC_SHA, ADDR_INDIRECT_Y, 2, 6, 0, 0, ins_sax },
+    [0xA3] = { OPC_LAX, ADDR_INDIRECT_X, 2, 6, 0, 0, ins_lax },
+    [0xB3] = { OPC_LAX, ADDR_INDIRECT_Y, 2, 5, 1, 0, ins_lax },
+    [0xC3] = { OPC_DCP, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_dcp },
+    [0xD3] = { OPC_DCP, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_dcp },
+    [0xE3] = { OPC_ISC, ADDR_INDIRECT_X, 2, 8, 0, 0, ins_isc },
+    [0xF3] = { OPC_ISC, ADDR_INDIRECT_Y, 2, 8, 0, 0, ins_isc },
+    [0x04] = { OPC_NOP, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_nop },
+    [0x14] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0x34] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0x44] = { OPC_NOP, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_nop },
+    [0x54] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0x64] = { OPC_NOP, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_nop },
+    [0x74] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0xD4] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0xF4] = { OPC_NOP, ADDR_ZEROPAGE_X, 2, 4, 0, 0, ins_nop },
+    [0x07] = { OPC_SLO, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_slo },
+    [0x17] = { OPC_SLO, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_slo },
+    [0x27] = { OPC_RLA, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_rla },
+    [0x37] = { OPC_RLA, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_rla },
+    [0x47] = { OPC_SRE, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_sre },
+    [0x57] = { OPC_SRE, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_sre },
+    [0x67] = { OPC_RRA, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_rra },
+    [0x77] = { OPC_RRA, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_rra },
+    [0x87] = { OPC_SAX, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_sax },
+    [0x97] = { OPC_SAX, ADDR_ZEROPAGE_Y, 2, 4, 0, 0, ins_sax },
+    [0xA7] = { OPC_LAX, ADDR_ZEROPAGE, 2, 3, 0, 0, ins_lax },
+    [0xB7] = { OPC_LAX, ADDR_ZEROPAGE_Y, 2, 4, 0, 0, ins_lax },
+    [0xC7] = { OPC_DCP, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_dcp },
+    [0xD7] = { OPC_DCP, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_dcp },
+    [0xE7] = { OPC_ISC, ADDR_ZEROPAGE, 2, 5, 0, 0, ins_isc },
+    [0xF7] = { OPC_ISC, ADDR_ZEROPAGE_X, 2, 6, 0, 0, ins_isc },
+    [0x1A] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0x3A] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0x5A] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0x7A] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0xDA] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0xFA] = { OPC_NOP, ADDR_IMPLIED, 1, 2, 0, 0, ins_nop },
+    [0x0B] = { OPC_ANC, ADDR_IMMEDIATE, 1, 2, 0, 0, ins_anc },
+    [0x1B] = { OPC_SLO, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_slo },
+    [0x2B] = { OPC_ANC, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_anc },
+    [0x3B] = { OPC_RLA, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_rla },
+    [0x4B] = { OPC_ALR, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_alr },
+    [0x5B] = { OPC_SRE, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_sre },
+    [0x6B] = { OPC_ARR, ADDR_IMMEDIATE, 2, 7, 0, 0, ins_arr },
+    [0x7B] = { OPC_RRA, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_rra },
+    [0x8B] = { OPC_ANE, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_ane },
+    [0x9B] = { OPC_TAS, ADDR_ABSOLUTE_Y, 3, 5, 0, 0, ins_tas },
+    [0xAB] = { OPC_LAX, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_lax },
+    [0xBB] = { OPC_LAS, ADDR_ABSOLUTE_Y, 3, 4, 0, 0, ins_las },
+    [0xCB] = { OPC_AXS, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_axs },
+    [0xDB] = { OPC_DCP, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_dcp },
+    [0xEB] = { OPC_SBC, ADDR_IMMEDIATE, 2, 2, 0, 0, ins_sbc },
+    [0xFB] = { OPC_ISC, ADDR_ABSOLUTE_Y, 3, 7, 0, 0, ins_isc },
+    [0x0C] = { OPC_NOP, ADDR_ABSOLUTE, 3, 4, 0, 0, ins_nop },
+    [0x1C] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0x3C] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0x5C] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0x7C] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0x9C] = { OPC_SHY, ADDR_ABSOLUTE_X, 3, 5, 0, 0, ins_shy },
+    [0x9E] = { OPC_SHX, ADDR_ABSOLUTE_Y, 3, 5, 0, 0, ins_shx },
+    [0xDC] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0xFC] = { OPC_NOP, ADDR_ABSOLUTE_X, 3, 4, 1, 0, ins_nop },
+    [0x0F] = { OPC_SLO, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_slo },
+    [0x1F] = { OPC_SLO, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_slo },
+    [0x2F] = { OPC_RLA, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_rla },
+    [0x3F] = { OPC_RLA, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_rla },
+    [0x4F] = { OPC_SRE, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_sre },
+    [0x5F] = { OPC_SRE, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_sre },
+    [0x6F] = { OPC_RRA, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_rra },
+    [0x7F] = { OPC_RRA, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_rra },
+    [0x8F] = { OPC_SAX, ADDR_ABSOLUTE, 3, 4, 0, 0, ins_sax },
+    [0x9F] = { OPC_SHA, ADDR_ABSOLUTE_Y, 3, 5, 0, 0, ins_sha },
+    [0xAF] = { OPC_LAX, ADDR_ABSOLUTE, 3, 4, 0, 0, ins_lax },
+    [0xBF] = { OPC_LAX, ADDR_ABSOLUTE_Y, 3, 4, 1, 0, ins_lax },
+    [0xCF] = { OPC_DCP, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_dcp },
+    [0xDF] = { OPC_DCP, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_dcp },
+    [0xEF] = { OPC_ISC, ADDR_ABSOLUTE, 3, 6, 0, 0, ins_isc },
+    [0xFF] = { OPC_ISC, ADDR_ABSOLUTE_X, 3, 7, 0, 0, ins_isc }
 };
 
 static char* str_mnemonics[] = {
@@ -249,7 +355,27 @@ static char* str_mnemonics[] = {
 	[OPC_TXA] = "TXA",
 	[OPC_TXS] = "TXS",
     [OPC_TYA] = "TYA",
-    [OPC_UNK] = "???"
+    [OPC_UNK] = "???",
+    // illegal
+	[OPC_JAM] = "JAM",
+	[OPC_SLO] = "SLO",
+	[OPC_RLA] = "RLA",
+	[OPC_SRE] = "SRE",
+	[OPC_RRA] = "RRA",
+	[OPC_SAX] = "SAX",
+	[OPC_SHA] = "SHA",
+	[OPC_LAX] = "LAX",
+	[OPC_DCP] = "DCP",
+	[OPC_ISC] = "ISC",
+	[OPC_ANC] = "AND",
+	[OPC_ALR] = "ALR",
+	[OPC_ARR] = "ARR",
+	[OPC_ANE] = "ANE",
+	[OPC_TAS] = "TAS",
+	[OPC_LAS] = "LAS",
+	[OPC_AXS] = "AXS",
+	[OPC_SHY] = "SHY",
+	[OPC_SHX] = "SHX"
 };
 
 static char* str_addr_modes[] = {
@@ -268,6 +394,35 @@ static char* str_addr_modes[] = {
 	[ADDR_RELATIVE] = "$%.2x"
 };
 
+static uint8_t illegal_opcs[] = {
+    0x02, 0x03, 0x04, 0x07, 0x0B, 0x0C, 0x0F, 0x12,
+    0x13, 0x14, 0x17, 0x1A, 0x1B, 0x1C, 0x1F, 0x22,
+    0x23, 0x27, 0x2B, 0x2F, 0x32, 0x33, 0x34, 0x37,
+    0x3A, 0x3B, 0x3C, 0x3F, 0x42, 0x43, 0x44, 0x47,
+    0x4B, 0x4F, 0x52, 0x53, 0x54, 0x57, 0x5A, 0x5B,
+    0x5C, 0x5F, 0x62, 0x63, 0x64, 0x67, 0x6B, 0x6F,
+    0x72, 0x73, 0x74, 0x77, 0x7A, 0x7B, 0x7C, 0x7F,
+    0x80, 0x82, 0x83, 0x87, 0x89, 0x8B, 0x8F, 0x92,
+    0x93, 0x97, 0x9B, 0x9C, 0x9E, 0x9F, 0xA3, 0xA7,
+    0xAB, 0xAF, 0xB2, 0xB3, 0xB7, 0xBB, 0xBF, 0xC2,
+    0xC3, 0xC7, 0xCB, 0xCF, 0xD2, 0xD3, 0xD4, 0xD7,
+    0xDA, 0xDB, 0xDC, 0xDF, 0xE2, 0xE3, 0xE7, 0xEB,
+    0xEF, 0xF2, 0xF3, 0xF4, 0xF7, 0xFA, 0xFB, 0xFC,
+    0xFF
+};
+
+bool
+is_opcode_illegal(uint8_t opc)
+{
+    int i = 0;
+    while (i < 105)
+    {
+        if (opc == illegal_opcs[i])
+            return true;
+        i++;
+    }
+    return false;
+}
 
 void
 print_opc(uint16_t addr)
@@ -276,8 +431,8 @@ print_opc(uint16_t addr)
 
     char opcode_full[64] = "";
     char opcode_mnemonic[4] = "";
-    char opcode_operands[16] = "";
-    char opcode_bytes[16] = "";
+    char opcode_bytes[32] = "";
+    char opcode_operands[32] = "";
 
     for (int i = 0; i < 4; i++)
     {
@@ -287,10 +442,12 @@ print_opc(uint16_t addr)
     struct opc_record cur_opcode = opc_table[bytes[0]];
     int len = cur_opcode.bytes;
 
+    if (len == 0) len = 4;
+
     for (int i = 0; i < len; i++)
     {
-        char tmp[4];
-        sprintf(tmp, "%.2X ", bytes[i]);
+        char tmp[8];
+        snprintf(tmp, 8, "%.2X ", bytes[i]);
         strcat(opcode_bytes, tmp);
     }
 
@@ -302,7 +459,7 @@ print_opc(uint16_t addr)
         case ADDR_ABSOLUTE_X:
         case ADDR_ABSOLUTE_Y:
         case ADDR_INDIRECT:
-            sprintf(opcode_operands, str_addr_modes[am], *(uint16_t*)(&bytes[1]));
+            snprintf(opcode_operands, 32, str_addr_modes[am], *(uint16_t*)(&bytes[1]));
             break;
         case ADDR_IMMEDIATE:
         case ADDR_INDIRECT_X:
@@ -311,24 +468,28 @@ print_opc(uint16_t addr)
         case ADDR_ZEROPAGE_X:
         case ADDR_ZEROPAGE_Y:
         case ADDR_RELATIVE:
-            sprintf(opcode_operands, str_addr_modes[am], *(uint8_t*)(&bytes[1]));
+            snprintf(opcode_operands, 32, str_addr_modes[am], *(uint8_t*)(&bytes[1]));
             break;
         case ADDR_IMPLIED:
         case ADDR_ACCUMULATOR:
-            sprintf(opcode_operands, str_addr_modes[am]);
+            snprintf(opcode_operands, 32, str_addr_modes[am]);
             break;
         default:
-            sprintf(opcode_operands, "");
+            snprintf(opcode_operands, 32, "");
             break;
     }
+    snprintf(opcode_mnemonic, 4, "%s ", str_mnemonics[cur_opcode.mnemonic]);
 
-    sprintf(opcode_mnemonic, "%s ", str_mnemonics[cur_opcode.mnemonic]);
-    strcat(opcode_full, opcode_mnemonic);
-    strcat(opcode_full, opcode_operands);
+    // strcat(opcode_full, opcode_mnemonic);
+    // strcat(opcode_full, opcode_operands);
+    snprintf(opcode_full, 64, "%c%s %s", 
+        (is_opcode_illegal(bytes[0])) ? '?' : ' ',
+        opcode_mnemonic, opcode_operands
+    );
 
     const char fmtstr[] = 
-        "%.4X: %-10s %-20s "
-        "A: %.2X X: %.2X Y: %.2X S: %.2X "
+        "%.4X: %-12s %-16s "
+        "A: %.2X X: %.2X Y: %.2X S: %.2X \t"
         "flags C: %d Z: %d V: %d N: %d I: %d\n";
 
     printf(
@@ -490,10 +651,12 @@ cpu_cycle()
 
     // TODO: make cycle accurate
 
+    // printf("CPU State: %d\n", CPU.state);
+
     switch(CPU.state)
     {
     case 0:
-        // print_opc(CPU.PC);
+        print_opc(CPU.PC);
         CPU.IR = read8(CPU.PC);
         CPU.addr_mode = opc_table[CPU.IR].addr_mode;
         CPU.rem_bytes = opc_table[CPU.IR].bytes;
@@ -548,6 +711,7 @@ void setnz(int8_t val)
 
 void interrupt(uint16_t intvec)
 {
+    // printf("interrupt\n");
     uint16_t return_addr = CPU.PC + 2;
     stack_push((return_addr >> 8) & 0xFF);
     stack_push(return_addr & 0xFF);
@@ -1057,3 +1221,27 @@ void ins_rti()
     CPU.PC = stack_pull();
     CPU.PC |= stack_pull() << 8;
 }
+
+/* Illegal instructions */
+// NOTE: unimplemented
+
+void ins_jam() { CPU.PC += CPU.rem_bytes; }
+void ins_slo() { CPU.PC += CPU.rem_bytes; }
+void ins_rla() { CPU.PC += CPU.rem_bytes; }
+void ins_sre() { CPU.PC += CPU.rem_bytes; }
+void ins_rra() { CPU.PC += CPU.rem_bytes; }
+void ins_sax() { CPU.PC += CPU.rem_bytes; }
+void ins_sha() { CPU.PC += CPU.rem_bytes; }
+void ins_lax() { CPU.PC += CPU.rem_bytes; }
+void ins_dcp() { CPU.PC += CPU.rem_bytes; }
+void ins_isc() { CPU.PC += CPU.rem_bytes; }
+void ins_anc() { CPU.PC += CPU.rem_bytes; }
+void ins_alr() { CPU.PC += CPU.rem_bytes; }
+void ins_arr() { CPU.PC += CPU.rem_bytes; }
+void ins_ane() { CPU.PC += CPU.rem_bytes; }
+void ins_tas() { CPU.PC += CPU.rem_bytes; }
+void ins_las() { CPU.PC += CPU.rem_bytes; }
+void ins_axs() { CPU.PC += CPU.rem_bytes; }
+void ins_shy() { CPU.PC += CPU.rem_bytes; }
+void ins_shx() { CPU.PC += CPU.rem_bytes; }
+

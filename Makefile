@@ -4,7 +4,7 @@
 all: build/nesemu
 
 build/nesemu: src/*.c src/*.h
-	gcc src/*.c -g -o build/nesemu -Og
+	gcc src/*.c -g -o build/nesemu -Og -lSDL2
 
 clean:
 	rm build/nesemu

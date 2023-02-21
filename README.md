@@ -7,7 +7,7 @@ resources as an academic project in 2019, rewritten from scratch in 2022.
 
 ## Resources Used
 
-- NESDoc.pdf
-- masswerk.at
-- 6502.org
+- [NESDev Wiki](https://nesdev.org/wiki)
+- [masswerk.at]()
+- [6502.org]()
 

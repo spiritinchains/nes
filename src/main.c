@@ -10,6 +10,9 @@ const char usage[] = "NES Emulator\n\nUsage:\nnesemu [ROM file]\n";
 void init();
 void run();
 
+SDL_Window* window;
+SDL_Event ev;
+
 int 
 main(int argc, char* argv[])
 {
@@ -19,6 +22,14 @@ main(int argc, char* argv[])
     }
 
     rom_open(argv[1]);
+
+    window = SDL_CreateWindow(
+        "Test Window",
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        800, 600,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
+    );
 
     init();
     run();
@@ -41,9 +52,20 @@ void
 run()
 {
     int count = 1;
-    while (count < 27000)
+    while (count < 100000)
     {
+        // printf("%d\n", count);
         clock_cycle();
         count++;
+        while(SDL_PollEvent(&ev))
+        {
+            switch (ev.type)
+            {
+                case SDL_QUIT:
+                    SDL_Quit();
+                    exit(0);
+                    break;
+            }
+        }
     }
 }

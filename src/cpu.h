@@ -79,7 +79,27 @@ enum opc_mnemonics
 	OPC_TSX,
 	OPC_TXA,
 	OPC_TXS,
-	OPC_TYA
+	OPC_TYA,
+	// illegal
+	OPC_JAM,
+	OPC_SLO,
+	OPC_RLA,
+	OPC_SRE,
+	OPC_RRA,
+	OPC_SAX,
+	OPC_SHA,
+	OPC_LAX,
+	OPC_DCP,
+	OPC_ISC,
+	OPC_ANC,
+	OPC_ALR,
+	OPC_ARR,
+	OPC_ANE,
+	OPC_TAS,
+	OPC_LAS,
+	OPC_AXS,
+	OPC_SHY,
+	OPC_SHX
 };
 
 struct cpu_flags
@@ -195,6 +215,25 @@ void ins_tsx();
 void ins_txa();
 void ins_txs();
 void ins_tya();
+void ins_jam();
+void ins_slo();
+void ins_rla();
+void ins_sre();
+void ins_rra();
+void ins_sax();
+void ins_sha();
+void ins_lax();
+void ins_dcp();
+void ins_isc();
+void ins_anc();
+void ins_alr();
+void ins_arr();
+void ins_ane();
+void ins_tas();
+void ins_las();
+void ins_axs();
+void ins_shy();
+void ins_shx();
 
 
 #endif

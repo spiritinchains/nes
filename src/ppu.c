@@ -121,6 +121,12 @@ void
 ppu_cycle()
 {
     PPU.dot = (PPU.dot + 1) % 341;
-    PPU.scanline = (PPU.scanline + 1) % 240;
+    if (PPU.dot == 0)
+        PPU.scanline = (PPU.scanline + 1) % 262;
+
     // printf("ppu dot: %d scan: %d\n", PPU.dot, PPU.scanline);
+    fflush(stdout);
+
+    // vblank
+    // if (PPU.dot == 0 && PPU.scanline == 240)
 }

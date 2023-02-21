@@ -24,7 +24,7 @@ main(int argc, char* argv[])
     rom_open(argv[1]);
 
     window = SDL_CreateWindow(
-        "Test Window",
+        "NES Emulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         800, 600,

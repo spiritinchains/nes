@@ -1223,18 +1223,95 @@ void ins_rti()
 }
 
 /* Illegal instructions */
-// NOTE: unimplemented
+// NOTE: many unimplemented
 
-void ins_jam() { CPU.PC += CPU.rem_bytes; }
-void ins_slo() { CPU.PC += CPU.rem_bytes; }
-void ins_rla() { CPU.PC += CPU.rem_bytes; }
-void ins_sre() { CPU.PC += CPU.rem_bytes; }
-void ins_rra() { CPU.PC += CPU.rem_bytes; }
-void ins_sax() { CPU.PC += CPU.rem_bytes; }
+void ins_jam() { }
+
+void ins_slo()
+{
+    CPU.flags.C = (CPU.data >> 7) & 1;
+    CPU.data <<= 1;
+    write8(CPU.e_addr, CPU.data);
+    CPU.A |= CPU.data;
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_rla()
+{
+    uint16_t r = CPU.data;
+    r <<= 1;
+    r |= CPU.flags.C;
+    CPU.flags.C = (r >> 8) & 1;
+    CPU.data = r & 0xFF;
+    write8(CPU.e_addr, CPU.data);
+    CPU.A &= CPU.data;
+
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sre()
+{
+    CPU.flags.C = CPU.data & 1;
+    CPU.data >>= 1;
+    write8(CPU.e_addr, CPU.data);
+    CPU.A ^= CPU.data;
+
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_rra()
+{
+    uint16_t r = CPU.data;
+    r |= CPU.flags.C << 8;
+    CPU.flags.C = r & 1;
+    r >>= 1;
+    CPU.data = r & 0xFF;
+    write8(CPU.e_addr, CPU.data);
+
+    CPU.A = adcsbc(CPU.A, CPU.data, CPU.flags.C);
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_sax()
+{
+    write8(CPU.e_addr, CPU.A & CPU.X);
+    CPU.PC += CPU.rem_bytes;
+}
+
+// unimplemented
 void ins_sha() { CPU.PC += CPU.rem_bytes; }
-void ins_lax() { CPU.PC += CPU.rem_bytes; }
-void ins_dcp() { CPU.PC += CPU.rem_bytes; }
-void ins_isc() { CPU.PC += CPU.rem_bytes; }
+
+void ins_lax() 
+{
+    CPU.A = CPU.data;
+    CPU.X = CPU.data;
+    setnz(CPU.data);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_dcp()
+{
+    CPU.data--;
+    write8(CPU.e_addr, CPU.data);
+    uint8_t r = CPU.A - CPU.data;
+    setnz(r);
+    CPU.PC += CPU.rem_bytes;
+}
+
+void ins_isc()
+{
+    CPU.data++;
+    write8(CPU.e_addr, CPU.data);
+    CPU.A = adcsbc(CPU.A, ~CPU.data, CPU.flags.C);
+    setnz(CPU.A);
+    CPU.PC += CPU.rem_bytes;
+}
+
+// unimplemented
 void ins_anc() { CPU.PC += CPU.rem_bytes; }
 void ins_alr() { CPU.PC += CPU.rem_bytes; }
 void ins_arr() { CPU.PC += CPU.rem_bytes; }

@@ -2,8 +2,7 @@
 #ifndef PPU_H
 #define PPU_H
 
-#include <inttypes.h>
-#include <stdbool.h>
+#include "common.h"
 
 enum ppu_reg
 {
@@ -20,15 +19,21 @@ enum ppu_reg
 
 struct ppu
 {
-    /* PPUCTRL functions */
-    uint8_t nt_base_addr;
+    uint8_t data;               // Data bus contents
+    uint16_t addr;              // PPU VRAM address
+
+    uint16_t nt_base_addr;      // base nametable address
+    uint16_t pt_addr;           // sprite pattern table address
+    uint16_t bg_pt_addr;        // background pattern table address
+
+    /* PPUCTRL flags */
+    // VRAM address increment per CPU write
+    // O: +1, across. 1: +32, down
     bool increment_mode;
-    bool pt_addr;
-    bool bg_pt_addr;
-    bool spr_size;
+    bool spr_size;              // 0: 8x8, 1: 8x16
     bool master_slave;
-    bool vblank_nmi;
-    /* PPUMASK functions */
+    bool vblank_nmi;            // generate NMI on vblank
+    /* PPUMASK flags */
     bool grayscale;
     bool show_left8_bg;
     bool show_left8_sprite;
@@ -46,8 +51,15 @@ struct ppu
     int32_t scanline;
 };
 
+extern struct ppu PPU;
+
 void ppu_init();
 void ppu_cycle();
+
+uint8_t ppu_reg_read(enum ppu_reg);
+uint8_t ppu_read8(uint16_t);
+
 void ppu_reg_write(enum ppu_reg, uint8_t);
+void ppu_write8(uint16_t, uint8_t);
 
 #endif

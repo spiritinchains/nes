@@ -35,18 +35,16 @@ bus_init()
 uint8_t 
 read8(uint16_t addr)
 {
+    if (addr >= 0x2000 && addr < 0x4000)
+    {
+        return ppu_reg_read((addr % 8));
+    }
     return *map[addr];
 }
 
 void
 write8(uint16_t addr, uint8_t data)
 {
-    // I don't remember why I put these in (sth to do with the test ROM?)
-    if (addr == 0x0002)
-        printf("FAILURE CODE 02h: %.2x\n", data);
-    if (addr == 0x0003)
-        printf("FAILURE CODE 03h: %.2x\n", data);
-    
     // PPU registers
     if (addr >= 0x2000 && addr < 0x4000)
     {

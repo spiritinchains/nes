@@ -4,11 +4,19 @@
 #include "cpubus.h"
 #include "rom.h"
 #include "timing.h"
+#include "graphics.h"
+
+#include <pthread.h>
 
 const char usage[] = "NES Emulator\n\nUsage:\nnesemu [ROM file]\n";
 
 void init();
-void run();
+void cleanup();
+
+void* run(void*);
+
+pthread_t emulation_thread;
+bool running;
 
 SDL_Window* window;
 SDL_Event ev;
@@ -27,45 +35,66 @@ main(int argc, char* argv[])
         "NES Emulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        800, 600,
+        640, 600,
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
     );
 
     init();
-    run();
-
-}
-
-void
-init()
-{
-    clock_init();
-    bus_init();
-    cpu_init();
-
-    printf("NMI vector:   $%.2X%.2X\n", read8(0xfffb), read8(0xfffa));
-    printf("RESET vector: $%.2X%.2X\n", read8(0xfffd), read8(0xfffc));
-    printf("IRQ vector:   $%.2X%.2X\n", read8(0xffff), read8(0xfffe));
-}
-
-void
-run()
-{
-    int count = 1;
-    while (count < 100000)
+    while (running)
     {
-        // printf("%d\n", count);
-        clock_cycle();
-        count++;
+        graphics_draw();
         while(SDL_PollEvent(&ev))
         {
             switch (ev.type)
             {
                 case SDL_QUIT:
                     SDL_Quit();
-                    exit(0);
+                    running = false;
                     break;
             }
         }
     }
+    cleanup();
+    exit(0);
+
+}
+
+void
+init()
+{
+    running = true;
+
+    clock_init();
+    bus_init();
+    cpu_init();
+    graphics_init();
+
+    // printf("NMI vector:   $%.2X%.2X\n", read8(0xfffb), read8(0xfffa));
+    // printf("RESET vector: $%.2X%.2X\n", read8(0xfffd), read8(0xfffc));
+    // printf("IRQ vector:   $%.2X%.2X\n", read8(0xffff), read8(0xfffe));
+
+    printf("NMI vector:   $%.4X\n", read16(0xfffa));
+    printf("RESET vector: $%.4X\n", read16(0xfffc));
+    printf("IRQ vector:   $%.4X\n", read16(0xfffe));
+
+    pthread_create(&emulation_thread, NULL, run, NULL);
+}
+
+void*
+run(void* arg)
+{
+    int count = 1;
+    while (count < 100000)
+    {
+        printf("Cycle %d\n", count);
+        clock_cycle();
+        count++;
+    }
+    printf("Stopping Emulation\n");
+}
+
+void cleanup()
+{
+    pthread_cancel(emulation_thread);
+    graphics_cleanup();
 }

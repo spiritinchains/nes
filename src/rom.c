@@ -87,4 +87,5 @@ rom_close()
 {
     free(ROM.prg);
     free(ROM.chr);
+    free(ROM.trainer);
 }

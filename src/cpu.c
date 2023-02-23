@@ -1,5 +1,4 @@
 
-#include "common.h"
 #include "cpu.h"
 #include "cpubus.h"
 
@@ -623,8 +622,12 @@ cpu_init()
     CPU.X = 0;
     CPU.Y = 0;
     CPU.S = 0xFF;
+    // CPU.S = 0xFD;
 
-    CPU.PC = 0xC000;
+    // CPU.PC = 0xC000;
+    CPU.PC = read16(0xFFFC);
+
+    CPU.flags = flags_unpack(0x34);
 
     CPU.state = 0;
     CPU.rem_bytes = 0;
@@ -712,7 +715,7 @@ void setnz(int8_t val)
 void interrupt(uint16_t intvec)
 {
     // printf("interrupt\n");
-    uint16_t return_addr = CPU.PC + 2;
+    uint16_t return_addr = CPU.PC;
     stack_push((return_addr >> 8) & 0xFF);
     stack_push(return_addr & 0xFF);
     CPU.PC = read8(intvec) | (read8(intvec + 1) << 8);
@@ -1208,8 +1211,9 @@ void ins_bit()
 
 void ins_brk()
 {
-    if (CPU.flags.I)
-        return;
+    CPU.PC += CPU.rem_bytes;
+    // if (CPU.flags.I)
+    //     return;
     CPU.flags.B = 1;
     cpu_irq();
     CPU.flags.B = 0;

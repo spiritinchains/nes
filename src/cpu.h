@@ -2,7 +2,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <inttypes.h>
+#include "common.h"
 
 enum addr_modes 
 {

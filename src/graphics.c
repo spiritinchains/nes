@@ -55,12 +55,15 @@ void graphics_draw()
 {
     SDL_RenderClear(renderer);
     SDL_SetRenderTarget(renderer, rendertarget);
+    // printf("NAMETABLE\n");
     for (int i = 0; i < 32; i++)
     {
         for (int j = 0; j < 30; j++)
         {
+            // printf("%x ", ppu_read8(PPU.nt_base_addr + (i + j * 30)));
             SDL_RenderCopy(renderer, dummy_tex, NULL, &bg_tiles[i][j]);
         }
+        // printf("\n");
     }
     SDL_SetRenderTarget(renderer, NULL);
     SDL_RenderCopy(renderer, rendertarget, NULL, NULL);

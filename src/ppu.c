@@ -76,6 +76,13 @@ uint8_t vram[2048];         // Video RAM - nametables
 uint8_t pram[32];           // Palette RAM
 uint8_t oam[256];           // Object Attribute Memory - sprites
 
+void
+ppu_init()
+{
+    PPU.dot = 0;
+    PPU.scanline = 0;
+}
+
 uint8_t
 ppu_read8(uint16_t addr)
 {
@@ -203,6 +210,9 @@ ppu_reg_read(enum ppu_reg reg)
             printf("PPU Read PPUSTATUS\n");
             // clear address latch
             PPU.addr = 0;
+            uint8_t ppustatus;
+            ppustatus |= PPU.data & 0x1F;
+            ppustatus |= PPU.in_vblank;
             break;
         case REG_PPUDATA:
             printf("PPU Read PPUDATA\n");
@@ -223,9 +233,15 @@ ppu_cycle()
     if (PPU.dot == 0)
         PPU.scanline = (PPU.scanline + 1) % 262;
 
-    // printf("ppu dot: %d scan: %d\n", PPU.dot, PPU.scanline);
-    // fflush(stdout);
+    printf("PPU dot: %d scan: %d\n", PPU.dot, PPU.scanline);
 
     // vblank
-    // if (PPU.dot == 0 && PPU.scanline == 240)
+    if (PPU.dot == 1 && PPU.scanline == 241)
+    {
+        PPU.in_vblank = true;
+    }
+    if (PPU.dot == 1 && PPU.scanline == 261)
+    {
+        PPU.in_vblank = false;
+    }
 }

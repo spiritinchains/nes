@@ -2,6 +2,7 @@
 #include "common.h"
 #include "cpu.h"
 #include "cpubus.h"
+#include "ppu.h"
 #include "rom.h"
 #include "timing.h"
 #include "graphics.h"
@@ -67,6 +68,7 @@ init()
     clock_init();
     bus_init();
     cpu_init();
+    ppu_init();
     graphics_init();
 
     // printf("NMI vector:   $%.2X%.2X\n", read8(0xfffb), read8(0xfffa));

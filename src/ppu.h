@@ -47,6 +47,7 @@ struct ppu
     uint8_t oam_data;
     /* other */
     bool even_frame;
+    bool in_vblank;
     int32_t dot;
     int32_t scanline;
 };

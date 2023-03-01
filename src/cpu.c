@@ -719,6 +719,7 @@ void interrupt(uint16_t intvec)
     stack_push((return_addr >> 8) & 0xFF);
     stack_push(return_addr & 0xFF);
     CPU.PC = read8(intvec) | (read8(intvec + 1) << 8);
+    CPU.state = 0;
     stack_push(flags_pack(CPU.flags));
 }
 
@@ -729,6 +730,7 @@ void cpu_irq()
 
 void cpu_nmi()
 {
+    printf("NMI\n");
     interrupt(0xFFFA);
 }
 

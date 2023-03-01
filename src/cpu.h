@@ -155,6 +155,7 @@ struct opc_record
 void cpu_init();
 void cpu_cycle();
 
+void cpu_nmi();
 
 /* Opcodes */
 

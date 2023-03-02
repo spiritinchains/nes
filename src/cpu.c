@@ -423,6 +423,13 @@ is_opcode_illegal(uint8_t opc)
     return false;
 }
 
+// used to disable reads on instructions that do not read from the bus
+bool
+is_store_instruction(enum opc_mnemonics op)
+{
+    return (op == OPC_STA) || (op == OPC_STX) || (op == OPC_STY) || (op == OPC_SAX);
+}
+
 void
 print_opc(uint16_t addr)
 {
@@ -520,17 +527,20 @@ get_operands()
     {
     case ADDR_ABSOLUTE:
         CPU.e_addr = read16(operand_addr);
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_ABSOLUTE_X:
         CPU.e_addr = read16(operand_addr);
         CPU.e_addr += CPU.X;
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_ABSOLUTE_Y:
         CPU.e_addr = read16(operand_addr);
         CPU.e_addr += CPU.Y;
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_ACCUMULATOR:
         CPU.data = CPU.A;
@@ -543,38 +553,44 @@ get_operands()
     case ADDR_INDIRECT:
         CPU.addr = read16(operand_addr);
         CPU.e_addr = read16(CPU.addr);
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_INDIRECT_X:
         CPU.e_addr = (read8(operand_addr) + CPU.X);
         CPU.e_addr &= 0x00FF;
         CPU.e_addr = read16(CPU.e_addr);
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_INDIRECT_Y:
         CPU.e_addr = read8(operand_addr);
         CPU.e_addr = read16(CPU.e_addr);
         CPU.e_addr += CPU.Y;
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_RELATIVE:
         CPU.data = read8(operand_addr);
         break;
     case ADDR_ZEROPAGE:
         CPU.e_addr = read8(operand_addr);
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_ZEROPAGE_X:
         CPU.e_addr = read8(operand_addr);
         CPU.e_addr += CPU.X;
         CPU.e_addr &= 0x00FF;
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;
     case ADDR_ZEROPAGE_Y:
         CPU.e_addr = read8(operand_addr);
         CPU.e_addr += CPU.Y;
         CPU.e_addr &= 0x00FF;
-        CPU.data = read8(CPU.e_addr);
+        if (!is_store_instruction(opc_table[CPU.IR].mnemonic))
+            CPU.data = read8(CPU.e_addr);
         break;            
     default:
         assert(0);

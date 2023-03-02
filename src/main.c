@@ -85,12 +85,9 @@ init()
 void*
 run(void* arg)
 {
-    int count = 1;
-    while (count < 100000)
+    while (running)
     {
-        printf("Cycle %d\n", count);
         clock_cycle();
-        count++;
     }
     printf("Stopping Emulation\n");
 }

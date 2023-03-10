@@ -8,7 +8,7 @@ SDL_Renderer* renderer;
 SDL_Texture* rendertarget;
 // SDL_Texture* dummy_tex;
 
-bool draw_frame;
+SDL_mutex* draw_mutex;
 
 void graphics_init()
 {
@@ -28,7 +28,7 @@ void graphics_init()
     // SDL_Surface* surface = SDL_LoadBMP("misc/pattern.bmp");
     // dummy_tex = SDL_CreateTextureFromSurface(renderer, surface);
     // SDL_FreeSurface(surface);
-    draw_frame = true;
+    draw_mutex = SDL_CreateMutex();
 }
 
 void graphics_cleanup()
@@ -40,25 +40,26 @@ void graphics_cleanup()
 
 void graphics_draw()
 {
-    if (!draw_frame)
+    int draw = SDL_TryLockMutex(draw_mutex);
+    if (draw == 0)
     {
-        return;
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, rendertarget, NULL, NULL);
+        SDL_RenderPresent(renderer);
+        SDL_UnlockMutex(draw_mutex);
     }
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, rendertarget, NULL, NULL);
-    SDL_RenderPresent(renderer);
 }
 
 void draw_begin()
 {
-    draw_frame = false;
+    SDL_LockMutex(draw_mutex);
     SDL_SetRenderTarget(renderer, rendertarget);
 }
 
 void draw_end()
 {
     SDL_SetRenderTarget(renderer, NULL);
-    draw_frame = true;
+    SDL_UnlockMutex(draw_mutex);
 }
 
 void draw_pixel(int x, int y, SDL_Color px)

@@ -21,10 +21,16 @@ struct ppu
 {
     uint8_t data;               // Data bus contents
     uint16_t addr;              // PPU VRAM address
+    uint16_t scroll;            // PPU scroll register
 
     uint16_t nt_base_addr;      // base nametable address
     uint16_t pt_addr;           // sprite pattern table address
     uint16_t bg_pt_addr;        // background pattern table address
+
+    uint16_t t;                 // temporary vram address
+
+    unsigned w : 1;             // PPU address write latch
+    unsigned x : 3;             // fine x scrolling
 
     /* PPUCTRL flags */
     // VRAM address increment per CPU write
@@ -42,14 +48,24 @@ struct ppu
     bool emph_red;
     bool emph_green;
     bool emph_blue;
+
     /* OAM stuff */
     uint8_t oam_addr;
     uint8_t oam_data;
+
     /* other */
     bool even_frame;
     bool in_vblank;
-    int32_t dot;
-    int32_t scanline;
+
+    uint8_t nt;
+    uint16_t at;
+    uint16_t bits_low;
+    uint16_t bits_high;
+    
+    uint32_t dot;
+    uint32_t scanline;
+
+    SDL_Color cur_pixels[16];
 };
 
 extern struct ppu PPU;

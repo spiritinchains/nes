@@ -4,6 +4,16 @@
 #include "ppu.h"
 #include "rom.h"
 
+#define PPU_SCROLL_X            0x001F
+#define PPU_SCROLL_Y            0x03E0
+#define PPU_SCROLL_FINE_Y       0x7000
+#define PPU_NAMETABLE           0x0C00
+
+#define PPU_SCROLL_X_SHIFT      0
+#define PPU_SCROLL_Y_SHIFT      5
+#define PPU_SCROLL_FINE_Y_SHIFT 12
+#define PPU_NAMETABLE_SHIFT     10
+
 struct ppu PPU;
 
 // NES Color Palette
@@ -88,6 +98,7 @@ ppu_init()
 uint8_t
 ppu_read8(uint16_t addr)
 {
+    addr &= 0x3FFF;
     if (addr >= 0 && addr < 0x2000)
     {
         return ROM.chr[addr];
@@ -105,13 +116,15 @@ ppu_read8(uint16_t addr)
 void
 ppu_write8(uint16_t addr, uint8_t data)
 {
+    addr &= 0x3FFF;
     if (addr >= 0x2000 && addr < 0x3EFF)
     {
+        // TODO: make this follow mirroring conventions
         vram[addr & 0x1FF] = data;
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
-        if (addr & 0xFFF3 == 0x3F10)
+        if (addr & ~0x000C == 0x3F10)
         {
             pram[addr & 0x0F] = data;
         }
@@ -130,7 +143,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
     switch (reg)
     {
         case REG_PPUCTRL:
-            printf("PPU Write PPUCTRL\n");
+            // printf("PPU Write PPUCTRL\n");
             /*
              * bit 0-1: nametable base
              *      0 = 2000, 
@@ -156,10 +169,13 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             PPU.spr_size = (data >> 5) & 1;
             PPU.master_slave = (data >> 6) & 1;
             PPU.vblank_nmi = (data >> 7) & 1;
+
+            PPU.t &= ~PPU_NAMETABLE;
+            PPU.t |= (data & 0x3) << PPU_NAMETABLE_SHIFT;
             break;
 
         case REG_PPUMASK:
-            printf("PPU Write PPUMASK\n");
+            // printf("PPU Write PPUMASK\n");
             /*
              * bit 0: greyscale
              * bit 1: show background in leftmost 8 pixels
@@ -179,24 +195,53 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             PPU.emph_red = (data >> 5) & 1;
             PPU.emph_blue = (data >> 6) & 1;
             PPU.emph_red = (data >> 7) & 1;
+
             break;
 
         case REG_OAMADDR:
-            printf("PPU Write OAMADDR\n");
+            // printf("PPU Write OAMADDR\n");
+            PPU.oam_addr = data;
             break;
         case REG_OAMDATA:
-            printf("PPU Write OAMDATA\n");
+            // printf("PPU Write OAMDATA\n");
+            oam[PPU.oam_addr] = data;
+            PPU.oam_addr++;
             break;
         case REG_PPUSCROLL:
-            printf("PPU Write PPUSCROLL\n");
+            // printf("PPU Write PPUSCROLL\n");
+            if (PPU.w == 0)
+            {
+                // X scroll
+                PPU.t &= ~PPU_SCROLL_X;
+                PPU.t |= (data >> 3) & 0x1F;
+                PPU.x = data & 0x03;
+            }
+            else
+            {
+                // Y scroll
+                PPU.t &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+                PPU.t |= ((data >> 3) & 0x1F) << PPU_SCROLL_Y_SHIFT;
+                PPU.t |= (data & 0x03) << PPU_SCROLL_FINE_Y_SHIFT;
+            }
+            PPU.w ^= 1;
             break;
         case REG_PPUADDR:
-            printf("PPU Write PPUADDR\n");
-            PPU.addr <<= 8;
-            PPU.addr |= data;
+            // printf("PPU Write PPUADDR\n");
+            if (PPU.w == 0)
+            {
+                PPU.t &= 0x00FF;
+                PPU.t |= (data & 0x3F) << 8;
+            }
+            else
+            {
+                PPU.t &= 0x7F00;
+                PPU.t |= (data & 0xFF);
+                PPU.addr = PPU.t;
+            }
+            PPU.w ^= 1;
             break;
         case REG_PPUDATA:
-            printf("PPU Write PPUDATA\n");
+            // printf("PPU Write PPUDATA\n");
             PPU.data = data;
             ppu_write8(PPU.addr, data);
             if (PPU.increment_mode == 0)
@@ -205,7 +250,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
                 PPU.addr += 32;
             break;
         case REG_OAMDMA:
-            printf("PPU Write OAMDMA\n");
+            // printf("PPU Write OAMDMA\n");
             break;
     }
 }
@@ -217,15 +262,15 @@ ppu_reg_read(enum ppu_reg reg)
     switch (reg)
     {
         case REG_PPUSTATUS:
-            printf("PPU Read PPUSTATUS\n");
+            // printf("PPU Read PPUSTATUS\n");
             // clear address latch
-            PPU.addr = 0;
+            PPU.w = 0;
             uint8_t ppustatus = PPU.data & 0x1F;
             ppustatus |= (PPU.in_vblank << 7);
             ret = ppustatus;
             break;
         case REG_PPUDATA:
-            printf("PPU Read PPUDATA\n");
+            // printf("PPU Read PPUDATA\n");
             ret = ppu_read8(PPU.addr);
             // if (PPU.increment_mode == 0)
             //     PPU.addr++;
@@ -233,14 +278,14 @@ ppu_reg_read(enum ppu_reg reg)
             //     PPU.addr += 32;
             break;
         case REG_OAMDATA:
-            printf("PPU Read OAMDATA\n");
+            // printf("PPU Read OAMDATA\n");
+            ret = oam[PPU.oam_addr];
             break;
         default:
             break;
     }
     return ret;
 }
-
 
 void
 ppu_cycle()
@@ -251,47 +296,117 @@ ppu_cycle()
 
     // printf("PPU dot: %d scan: %d\n", PPU.dot, PPU.scanline);
 
-    // NOTE: only drawing first nametable; must be changed when scrolling
-    // is implemented
+    // render scanlines
+    if (PPU.scanline < 240 || PPU.scanline > 260)
+    {
+        // increment vertical position
+        if (PPU.dot == 256)
+        {
+            int y = (PPU.addr & PPU_SCROLL_Y) >> PPU_SCROLL_Y_SHIFT;
+            int fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+
+            fine_y++;
+            y += (fine_y & 0x8) >> 3;
+
+            PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+            PPU.addr |= (fine_y & 0x7) << PPU_SCROLL_FINE_Y_SHIFT;
+            PPU.addr |= (y % 30) << 5;
+            // switch vertical nametable on overflow (0x2000/0x2800, 0x2400/0x2C00)
+            PPU.addr ^= (y / 30) << (PPU_NAMETABLE_SHIFT + 1);
+        }
+
+        // update horizontal position
+        if (PPU.dot == 257)
+        {
+            PPU.addr &= ~(PPU_SCROLL_X);
+            PPU.addr |= (PPU.t & PPU_SCROLL_X);
+        }
+
+        // update vertical position
+        if (PPU.dot >= 280 && PPU.dot <= 304 && PPU.scanline == 261)
+        {
+            PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+            PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+        }
+
+        // byte fetching
+        if (PPU.dot < 256 || PPU.dot > 320)
+        {
+            // increment horizontal position
+            if (PPU.dot % 8 == 0)
+            {
+                int x = PPU.addr & 0x001F;
+                x++;
+                PPU.addr &= ~PPU_SCROLL_X;
+                PPU.addr |= (x & 0x1F);
+                // switch horizontal nametable on overflow (0x2000/0x2400, 0x2800/0x2C00)
+                PPU.addr ^= (x / 32) << PPU_NAMETABLE_SHIFT;
+                // update pixels
+                for (int i = 0; i < 16; i++)
+                {
+                    int shift_i = 15 - i;
+                    int color_i = 0;
+                    color_i |= (PPU.bits_low >> shift_i) & 1;
+                    color_i |= ((PPU.bits_high >> shift_i) << 1) & 2;
+                    PPU.cur_pixels[i] = (color_i == 0) ? colors[0x0f] : colors[0x20];
+                }
+            }
+
+            // fetch NT
+            if (PPU.dot % 8 == 1)
+            {
+                uint16_t nt_addr = 0x2000;
+                nt_addr |= (PPU.addr & 0xFFF);
+                PPU.nt = ppu_read8(nt_addr);
+            }
+            // fetch AT
+            if (PPU.dot % 8 == 3)
+            {
+                uint16_t at_addr = 0x23C0;
+                at_addr |= PPU.addr & PPU_NAMETABLE;
+                at_addr |= (PPU.addr >> 2) & 0x7;
+                at_addr |= (PPU.addr >> 4) & 0x38;
+                uint8_t atbyte = ppu_read8(at_addr);
+                PPU.at <<= 8;
+                PPU.at |= atbyte;
+            }
+            // fetch bg low
+            if (PPU.dot % 8 == 5)
+            {
+                uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+                uint8_t bgtile = ppu_read8(/* PPU.bg_pt_addr + */ PPU.nt * 16 + fine_y);
+                PPU.bits_low <<= 8;
+                PPU.bits_low |= bgtile;
+            }
+            // fetch bg high
+            if (PPU.dot % 8 == 7)
+            {
+                uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+                uint8_t bgtile = ppu_read8(/* PPU.bg_pt_addr + */ PPU.nt * 16 + 8 + fine_y);
+                PPU.bits_high <<= 8;
+                PPU.bits_high |= bgtile;
+            }
+        }
+    }
 
     // frame
     if ((PPU.dot >= 0 && PPU.dot <= 256) && (PPU.scanline >= 0 && PPU.scanline <= 240))
     {
         /*  draw background */
-        SDL_Color pixel = colors[2];
+        SDL_Color pixel = PPU.cur_pixels[(PPU.dot % 8) + PPU.x];
+        // SDL_Color pixel = colors[0x20];
 
-        int ntile_i;    // nametable tile index
-        int ptile_i;    // pattern index
-        int shift_i;    // bit shift index
+        // // get attribute (color) information
+        // int attr_tile_i;    // attribute byte index
+        // int attr_shift_i;   // attribute byte shift index
+        // uint8_t pal_i;      // palette index in pram
 
-        ntile_i = (PPU.dot / 8) + 32 * (PPU.scanline / 8);
-        ptile_i = ppu_read8(PPU.nt_base_addr + ntile_i);
-        shift_i = 7 - (PPU.dot % 8);
-
-        // get pixel data for bg
-        uint8_t bits1 = ppu_read8(PPU.bg_pt_addr + (ptile_i * 16) + (PPU.scanline % 8));
-        uint8_t bits2 = ppu_read8(PPU.bg_pt_addr + (ptile_i * 16) + (PPU.scanline % 8) + 8);
-
-        uint8_t color_i = 0;
-        color_i |= (bits1 >> shift_i) & 1;
-        color_i |= ((bits2 >> shift_i) & 1) << 1;
-
-        // get attribute (color) information
-        int attr_tile_i;    // attribute byte index
-        int attr_shift_i;   // attribute byte shift index
-        uint8_t pal_i;      // palette index in pram
-
-        // retrieve palette index from attribute table
-        attr_tile_i = (PPU.dot / 16) + 16 * (PPU.scanline / 16);
-        attr_shift_i = ((PPU.dot / 8) % 2) << ((PPU.scanline / 8) % 2);
-        pal_i = ppu_read8(PPU.nt_base_addr + 0x9C0 + attr_tile_i);
-        pal_i >>= (2 * attr_shift_i);
-        pal_i &= 0x3;
-
-        // get color from palette
-        // pixel = colors[pram[pal_i * 4 + color_i]];
-        pixel = (color_i == 0) ? colors[0x0f] : colors[0x30];
-        // printf("r %02X g %02X b %02X\n", pixel.r, pixel.g, pixel.b);
+        // // retrieve palette index from attribute table
+        // attr_tile_i = (PPU.dot / 16) + 16 * (PPU.scanline / 16);
+        // attr_shift_i = ((PPU.dot / 8) % 2) << ((PPU.scanline / 8) % 2);
+        // pal_i = ppu_read8(PPU.nt_base_addr + 0x9C0 + attr_tile_i);
+        // pal_i >>= (2 * attr_shift_i);
+        // pal_i &= 0x3;
 
         // draw the pixel
         draw_pixel(PPU.dot, PPU.scanline, pixel);

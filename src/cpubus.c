@@ -18,6 +18,7 @@ bus_init()
         map[i] = &RAM[i & 0x7FF];
     }
 
+    // unassigned
     for(int i = 0x2000; i < 0x8000; i++)
     {
         map[i] = &blank;
@@ -35,9 +36,19 @@ bus_init()
 uint8_t 
 read8(uint16_t addr)
 {
+    // ppu registers
     if (addr >= 0x2000 && addr < 0x4000)
     {
         return ppu_reg_read((addr % 8));
+    }
+    // controllers
+    if (addr == 0x4016)
+    {
+        // port 1
+    }
+    if (addr == 0x4017)
+    {
+        // port 2
     }
     return *map[addr];
 }

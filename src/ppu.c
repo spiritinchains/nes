@@ -1,6 +1,7 @@
 
 #include "graphics.h"
 #include "cpu.h"
+#include "cpubus.h"
 #include "ppu.h"
 #include "rom.h"
 
@@ -84,6 +85,26 @@ SDL_Color const colors[64] = {
     [0x3f] = { .r = 0,      .g = 0,     .b = 0,     .a = 255 }
 };
 
+uint8_t debug_idx[16][8] = 
+{
+    [0x0] = { 0x00, 0x07, 0x05, 0x05, 0x05, 0x05, 0x07, 0x00 },
+    [0x1] = { 0x00, 0x06, 0x02, 0x02, 0x02, 0x02, 0x07, 0x00 },
+    [0x2] = { 0x00, 0x07, 0x01, 0x01, 0x07, 0x04, 0x07, 0x00 },
+    [0x3] = { 0x00, 0x07, 0x01, 0x03, 0x01, 0x01, 0x07, 0x00 },
+    [0x4] = { 0x00, 0x05, 0x05, 0x05, 0x07, 0x01, 0x01, 0x00 },
+    [0x5] = { 0x00, 0x07, 0x04, 0x07, 0x01, 0x01, 0x07, 0x00 },
+    [0x6] = { 0x00, 0x07, 0x04, 0x07, 0x05, 0x05, 0x07, 0x00 },
+    [0x7] = { 0x00, 0x07, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00 },
+    [0x8] = { 0x00, 0x07, 0x05, 0x07, 0x05, 0x05, 0x07, 0x00 },
+    [0x9] = { 0x00, 0x07, 0x05, 0x05, 0x07, 0x01, 0x07, 0x00 },
+    [0xA] = { 0x00, 0x07, 0x05, 0x05, 0x05, 0x07, 0x05, 0x00 },
+    [0xB] = { 0x00, 0x06, 0x05, 0x06, 0x05, 0x05, 0x07, 0x00 },
+    [0xC] = { 0x00, 0x07, 0x04, 0x04, 0x04, 0x04, 0x07, 0x00 },
+    [0xD] = { 0x00, 0x06, 0x05, 0x05, 0x05, 0x05, 0x07, 0x00 },
+    [0xE] = { 0x00, 0x07, 0x04, 0x06, 0x04, 0x04, 0x07, 0x00 },
+    [0xF] = { 0x00, 0x07, 0x04, 0x06, 0x04, 0x04, 0x04, 0x00 }
+};
+
 uint8_t vram[2048];         // Video RAM - nametables
 uint8_t pram[32];           // Palette RAM
 uint8_t oam[256];           // Object Attribute Memory - sprites
@@ -101,11 +122,16 @@ ppu_read8(uint16_t addr)
     addr &= 0x3FFF;
     if (addr >= 0 && addr < 0x2000)
     {
+        // int i = addr & 0x7;
+        // int u = (addr & 0xf0) >> 4;
+        // int v = (addr & 0xf00) >> 8;
+        // uint8_t tp = debug_idx[u][i] | (debug_idx[v][i] << 4);
+        // return tp;
         return ROM.chr[addr];
     }
     if (addr >= 0x2000 && addr < 0x3EFF)
     {
-        return vram[addr & 0x1FF];
+        return vram[addr & 0x7FF];
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
@@ -120,7 +146,7 @@ ppu_write8(uint16_t addr, uint8_t data)
     if (addr >= 0x2000 && addr < 0x3EFF)
     {
         // TODO: make this follow mirroring conventions
-        vram[addr & 0x1FF] = data;
+        vram[addr & 0x7FF] = data;
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
@@ -241,7 +267,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             PPU.w ^= 1;
             break;
         case REG_PPUDATA:
-            // printf("PPU Write PPUDATA\n");
+            // printf("PPU Write PPUDATA: 0x%04X <- 0x%02X\n", PPU.addr, data);
             PPU.data = data;
             ppu_write8(PPU.addr, data);
             if (PPU.increment_mode == 0)
@@ -251,6 +277,13 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             break;
         case REG_OAMDMA:
             // printf("PPU Write OAMDMA\n");
+            CPU.dma_cycles = 256;
+            // CPU.dma_page = (data << 8);
+            // transfer data at once instead of simulating 256 cycles
+            for (int i = 0; i < 256; i++)
+            {
+                oam[i] = read8((data << 8) + i);
+            }
             break;
     }
 }
@@ -288,137 +321,181 @@ ppu_reg_read(enum ppu_reg reg)
 }
 
 void
+nt_fetch()
+{
+    uint16_t nt_addr = 0x2000;
+    nt_addr |= (PPU.addr & 0xFFF);
+    PPU.lat_nt = ppu_read8(nt_addr);
+    // printf("NT addr: %4X data: %2X\n", nt_addr, PPU.lat_nt);
+}
+
+void
+at_fetch()
+{
+    uint16_t at_addr = 0x23C0;
+    at_addr |= PPU.addr & PPU_NAMETABLE;
+    at_addr |= (PPU.addr >> 2) & 0x7;
+    at_addr |= (PPU.addr >> 4) & 0x38;
+    PPU.lat_at = ppu_read8(at_addr);
+}
+
+void
+bg_lo_fetch()
+{
+    uint8_t nt = PPU.lat_nt;
+    uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+    uint8_t bgtile = ppu_read8(PPU.bg_pt_addr + nt * 16 + fine_y);
+    PPU.lat_bg_lo = bgtile;
+}
+
+void
+bg_hi_fetch()
+{
+    uint8_t nt = PPU.lat_nt;
+    uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+    uint8_t bgtile = ppu_read8(PPU.bg_pt_addr + nt * 16 + 8 + fine_y);
+    PPU.lat_bg_hi = bgtile;
+}
+
+void
+inc_hor()
+{
+    uint8_t x = PPU.addr & 0x001F;
+    x++;
+    PPU.addr &= ~PPU_SCROLL_X;
+    PPU.addr |= (x & PPU_SCROLL_X);
+    // switch horizontal nametable on overflow (0x2000/0x2400, 0x2800/0x2C00)
+    // PPU.addr ^= (x / 32) << PPU_NAMETABLE_SHIFT;
+    // TODO: find when this applies
+}
+
+void
+inc_ver()
+{
+    uint8_t y = (PPU.addr & PPU_SCROLL_Y) >> PPU_SCROLL_Y_SHIFT;
+    uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
+
+    fine_y++;
+    y += (fine_y & 0x8) >> 3;
+
+    // switch vertical nametable on overflow (0x2000/0x2800, 0x2400/0x2C00)
+    // PPU.addr ^= ((y == 30) ? 1 : 0) << (PPU_NAMETABLE_SHIFT + 1);
+
+    if (y == 30) y = 0;
+    PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+    PPU.addr |= (fine_y & 0x7) << PPU_SCROLL_FINE_Y_SHIFT;
+    PPU.addr |= (y & 0x1f) << PPU_SCROLL_Y_SHIFT;
+}
+
+void
+upd_hor()
+{
+    // printf("upd hor old: %4X ", PPU.addr);
+    PPU.addr &= ~PPU_SCROLL_X;
+    PPU.addr |= PPU.t & PPU_SCROLL_X;
+    // printf("new: %4X t: %4X\n", PPU.addr, PPU.t);
+}
+
+void
+upd_ver()
+{
+    PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+    PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+}
+
+void
 ppu_cycle()
 {
+    // update dot and scanline counter
     PPU.dot = (PPU.dot + 1) % 341;
     if (PPU.dot == 0)
         PPU.scanline = (PPU.scanline + 1) % 262;
 
+    // skip from 339,261 to 0,0
+    if (PPU.dot == 340 && PPU.scanline == 261)
+    {
+        PPU.dot = 0;
+        PPU.scanline = 0;
+    }
+
     // printf("PPU dot: %d scan: %d\n", PPU.dot, PPU.scanline);
 
-    // render scanlines
-    if (PPU.scanline < 240 || PPU.scanline > 260)
+    // rendering scanlines
+    if ((PPU.scanline < 240 || PPU.scanline > 260))
     {
-        // increment vertical position
-        if (PPU.dot == 256)
+        if (PPU.show_bg || PPU.show_sprite)
         {
-            int y = (PPU.addr & PPU_SCROLL_Y) >> PPU_SCROLL_Y_SHIFT;
-            int fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
-
-            fine_y++;
-            y += (fine_y & 0x8) >> 3;
-
-            PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
-            PPU.addr |= (fine_y & 0x7) << PPU_SCROLL_FINE_Y_SHIFT;
-            PPU.addr |= (y % 30) << 5;
-            // switch vertical nametable on overflow (0x2000/0x2800, 0x2400/0x2C00)
-            PPU.addr ^= (y / 30) << (PPU_NAMETABLE_SHIFT + 1);
-        }
-
-        // update horizontal position
-        if (PPU.dot == 257)
-        {
-            PPU.addr &= ~(PPU_SCROLL_X);
-            PPU.addr |= (PPU.t & PPU_SCROLL_X);
-        }
-
-        // update vertical position
-        if (PPU.dot >= 280 && PPU.dot <= 304 && PPU.scanline == 261)
-        {
-            PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
-            PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
-        }
-
-        // byte fetching
-        if (PPU.dot < 256 || PPU.dot > 320)
-        {
-            // increment horizontal position
-            if (PPU.dot % 8 == 0)
+            // fetch bytes
+            if ((PPU.dot < 257 || PPU.dot > 320) && (PPU.show_bg || PPU.show_sprite))
             {
-                int x = PPU.addr & 0x001F;
-                x++;
-                PPU.addr &= ~PPU_SCROLL_X;
-                PPU.addr |= (x & 0x1F);
-                // switch horizontal nametable on overflow (0x2000/0x2400, 0x2800/0x2C00)
-                PPU.addr ^= (x / 32) << PPU_NAMETABLE_SHIFT;
-                // update pixels
-                for (int i = 0; i < 16; i++)
+                if (PPU.dot % 8 == 1)
                 {
-                    int shift_i = 15 - i;
-                    int color_i = 0;
-                    color_i |= (PPU.bits_low >> shift_i) & 1;
-                    color_i |= ((PPU.bits_high >> shift_i) << 1) & 2;
-                    PPU.cur_pixels[i] = (color_i == 0) ? colors[0x0f] : colors[0x20];
+                    nt_fetch();
+                }
+                if (PPU.dot % 8 == 3)
+                {
+                    at_fetch();
+                }
+                if (PPU.dot % 8 == 5)
+                {
+                    bg_lo_fetch();
+                }
+                if (PPU.dot % 8 == 7)
+                {
+                    bg_hi_fetch();
+                }
+            }
+            // shift and load registers, increment vram
+            if ((PPU.dot >= 2 && PPU.dot <= 257) || (PPU.dot >= 322 && PPU.dot <= 337))
+            {
+                PPU.bg_lo <<= 1;
+                PPU.bg_hi <<= 1;
+
+                if (PPU.dot % 8 == 0)
+                    inc_hor();
+                if (PPU.dot == 256)
+                    inc_ver();
+
+                if (PPU.dot % 8 == 1)
+                {
+                    PPU.bg_lo |= PPU.lat_bg_lo;
+                    PPU.bg_hi |= PPU.lat_bg_hi;
+                    PPU.at <<= 8;
+                    PPU.at |= PPU.lat_at;
                 }
             }
 
-            // fetch NT
-            if (PPU.dot % 8 == 1)
-            {
-                uint16_t nt_addr = 0x2000;
-                nt_addr |= (PPU.addr & 0xFFF);
-                PPU.nt = ppu_read8(nt_addr);
-            }
-            // fetch AT
-            if (PPU.dot % 8 == 3)
-            {
-                uint16_t at_addr = 0x23C0;
-                at_addr |= PPU.addr & PPU_NAMETABLE;
-                at_addr |= (PPU.addr >> 2) & 0x7;
-                at_addr |= (PPU.addr >> 4) & 0x38;
-                uint8_t atbyte = ppu_read8(at_addr);
-                PPU.at <<= 8;
-                PPU.at |= atbyte;
-            }
-            // fetch bg low
-            if (PPU.dot % 8 == 5)
-            {
-                uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
-                uint8_t bgtile = ppu_read8(/* PPU.bg_pt_addr + */ PPU.nt * 16 + fine_y);
-                PPU.bits_low <<= 8;
-                PPU.bits_low |= bgtile;
-            }
-            // fetch bg high
-            if (PPU.dot % 8 == 7)
-            {
-                uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
-                uint8_t bgtile = ppu_read8(/* PPU.bg_pt_addr + */ PPU.nt * 16 + 8 + fine_y);
-                PPU.bits_high <<= 8;
-                PPU.bits_high |= bgtile;
-            }
+            // update vram address
+            if (PPU.dot == 257)
+                upd_hor();
+            if (PPU.dot >= 280 && PPU.dot <= 304 && PPU.scanline == 261)
+                upd_ver();
+
+        }
+        // display pixel
+        if (PPU.dot > 0 && PPU.dot <= 256 && PPU.scanline != 261)
+        {
+            uint8_t col_i = 0;
+            col_i |= (PPU.bg_lo >> (15 - PPU.x)) & 1;
+            col_i |= ((PPU.bg_hi >> (15 - PPU.x)) << 1) & 2;
+
+            // uint8_t hue = (PPU.scanline / 8) % 12 + 1;
+            uint8_t hue = 0x06;
+            SDL_Color pixel = colors[(col_i << 4) | hue];
+            
+            draw_pixel(PPU.dot - 1, PPU.scanline, pixel);
         }
     }
 
-    // frame
-    if ((PPU.dot >= 0 && PPU.dot <= 256) && (PPU.scanline >= 0 && PPU.scanline <= 240))
-    {
-        /*  draw background */
-        SDL_Color pixel = PPU.cur_pixels[(PPU.dot % 8) + PPU.x];
-        // SDL_Color pixel = colors[0x20];
-
-        // // get attribute (color) information
-        // int attr_tile_i;    // attribute byte index
-        // int attr_shift_i;   // attribute byte shift index
-        // uint8_t pal_i;      // palette index in pram
-
-        // // retrieve palette index from attribute table
-        // attr_tile_i = (PPU.dot / 16) + 16 * (PPU.scanline / 16);
-        // attr_shift_i = ((PPU.dot / 8) % 2) << ((PPU.scanline / 8) % 2);
-        // pal_i = ppu_read8(PPU.nt_base_addr + 0x9C0 + attr_tile_i);
-        // pal_i >>= (2 * attr_shift_i);
-        // pal_i &= 0x3;
-
-        // draw the pixel
-        draw_pixel(PPU.dot, PPU.scanline, pixel);
-    }
-
-    // vblank
+    // set vblank flag
     if (PPU.dot == 1 && PPU.scanline == 241)
     {
+        printf("VBLANK\n");
         PPU.in_vblank = true;
         if (PPU.vblank_nmi) cpu_nmi();
         draw_end();
     }
+    // clear flags
     if (PPU.dot == 1 && PPU.scanline == 261)
     {
         PPU.in_vblank = false;

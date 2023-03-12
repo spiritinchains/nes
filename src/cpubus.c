@@ -60,10 +60,17 @@ write8(uint16_t addr, uint8_t data)
     if (addr >= 0x2000 && addr < 0x4000)
     {
         ppu_reg_write((addr % 8), data);
+        return;
     }
     if (addr == 0x4014)
     {
         ppu_reg_write(8, data);
+        return;
+    }
+    if (addr >= 0x8000 && addr < 0x10000)
+    {
+        printf("Illegal write\n");
+        return;
     }
 
     // TODO: protection for read only locations

@@ -139,6 +139,10 @@ struct cpu
 	uint16_t addr;
 	uint8_t data;
 
+	/* DMA */
+	uint32_t dma_cycles;
+	uint16_t dma_page;
+
 } extern CPU;
 
 struct opc_record

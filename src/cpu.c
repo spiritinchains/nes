@@ -672,10 +672,17 @@ cpu_cycle()
 
     // printf("CPU State: %d\n", CPU.state);
 
+    // skip cycle if dma ongoing
+    if (CPU.dma_cycles > 0)
+    {
+        CPU.dma_cycles--;
+        return;
+    }
+
     switch(CPU.state)
     {
     case 0:
-        print_opc(CPU.PC);
+        // print_opc(CPU.PC);
         CPU.IR = read8(CPU.PC);
         CPU.addr_mode = opc_table[CPU.IR].addr_mode;
         CPU.rem_bytes = opc_table[CPU.IR].bytes;
@@ -746,7 +753,7 @@ void cpu_irq()
 
 void cpu_nmi()
 {
-    printf("NMI\n");
+    // printf("NMI\n");
     interrupt(0xFFFA);
 }
 

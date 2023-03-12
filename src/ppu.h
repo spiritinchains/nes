@@ -23,6 +23,15 @@ struct ppu
     uint16_t addr;              // PPU VRAM address
     uint16_t scroll;            // PPU scroll register
 
+    uint8_t lat_nt;             // nametable byte latch
+    uint8_t lat_at;             // attribute byte latch
+    uint8_t lat_bg_lo;          // background low bits latch
+    uint8_t lat_bg_hi;          // backgroung high bits latch
+
+    uint16_t at;                // attribute byte shift
+    uint16_t bg_lo;             // background low bits shift
+    uint16_t bg_hi;             // background high bits shift
+
     uint16_t nt_base_addr;      // base nametable address
     uint16_t pt_addr;           // sprite pattern table address
     uint16_t bg_pt_addr;        // background pattern table address
@@ -57,11 +66,6 @@ struct ppu
     bool even_frame;
     bool in_vblank;
 
-    uint8_t nt;
-    uint16_t at;
-    uint16_t bits_low;
-    uint16_t bits_high;
-    
     uint32_t dot;
     uint32_t scanline;
 

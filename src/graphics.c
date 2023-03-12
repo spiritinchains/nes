@@ -10,6 +10,9 @@ SDL_Texture* rendertarget;
 
 SDL_mutex* draw_mutex;
 
+size_t frames = 0;
+size_t calls = 0;
+
 void graphics_init()
 {
     renderer = SDL_CreateRenderer(
@@ -40,9 +43,12 @@ void graphics_cleanup()
 
 void graphics_draw()
 {
+    calls++;
+    printf("%d %d\n", calls, frames);
     int draw = SDL_TryLockMutex(draw_mutex);
     if (draw == 0)
     {
+        frames++;
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, rendertarget, NULL, NULL);
         SDL_RenderPresent(renderer);
@@ -52,18 +58,24 @@ void graphics_draw()
 
 void draw_begin()
 {
-    SDL_LockMutex(draw_mutex);
+    // printf("FRAME START\n");
+    // SDL_LockMutex(draw_mutex);
     SDL_SetRenderTarget(renderer, rendertarget);
+    // SDL_RenderClear(renderer);
 }
 
 void draw_end()
 {
     SDL_SetRenderTarget(renderer, NULL);
-    SDL_UnlockMutex(draw_mutex);
+    // SDL_UnlockMutex(draw_mutex);
+    // SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, rendertarget, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
 
 void draw_pixel(int x, int y, SDL_Color px)
 {
     SDL_SetRenderDrawColor(renderer, px.r, px.g, px.b, px.a);
     SDL_RenderDrawPoint(renderer, x, y);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }

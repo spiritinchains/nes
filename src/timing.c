@@ -13,9 +13,11 @@
 
 static int NESCLK_COMMON_DIV;
 static int count = 0;
-
+static int ppu_sleep = 29658;
 
 static struct timespec st, ed;
+
+size_t cycles = 0;
 
 void 
 clock_start()
@@ -56,6 +58,8 @@ clock_init()
 void 
 clock_cycle()
 {
+    // printf("CYCLE %d\n", cycles);
+    cycles++;
     count = (count + 1) % NESCLK_COMMON_DIV;
     clock_start();
     if (count % NESCLK_CPU_DIV)
@@ -64,7 +68,10 @@ clock_cycle()
     }
     if (count % NESCLK_PPU_DIV)
     {
-        ppu_cycle();
+        if (ppu_sleep > 0)
+            ppu_sleep--;
+        else
+            ppu_cycle();
     }
     clock_end();
 }

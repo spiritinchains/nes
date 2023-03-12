@@ -43,7 +43,6 @@ main(int argc, char* argv[])
     init();
     while (running)
     {
-        graphics_draw();
         while(SDL_PollEvent(&ev))
         {
             switch (ev.type)

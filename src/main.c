@@ -22,6 +22,8 @@ bool running;
 SDL_Window* window;
 SDL_Event ev;
 
+const uint8_t* keyboard_state;
+
 int 
 main(int argc, char* argv[])
 {
@@ -63,6 +65,8 @@ void
 init()
 {
     running = true;
+
+    keyboard_state = SDL_GetKeyboardState(NULL);
 
     clock_init();
     bus_init();

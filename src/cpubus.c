@@ -1,6 +1,7 @@
 
 #include "common.h"
 #include "cpubus.h"
+#include "controls.h"
 #include "rom.h"
 #include "ppu.h"
 
@@ -45,10 +46,12 @@ read8(uint16_t addr)
     if (addr == 0x4016)
     {
         // port 1
+        return ctrl_read(1);
     }
     if (addr == 0x4017)
     {
         // port 2
+        return ctrl_read(2);
     }
     return *map[addr];
 }
@@ -66,6 +69,11 @@ write8(uint16_t addr, uint8_t data)
     {
         ppu_reg_write(8, data);
         return;
+    }
+    // Controller
+    if (addr == 0x4016)
+    {
+        ctrl_write(data);
     }
     if (addr >= 0x8000 && addr < 0x10000)
     {

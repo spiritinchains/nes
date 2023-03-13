@@ -32,5 +32,6 @@ struct rom
 extern struct rom ROM;
 
 const struct rom* rom_open(const char []);
+void rom_close();
 
 #endif

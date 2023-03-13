@@ -31,7 +31,7 @@ clock_end()
     do {
         clock_gettime(CLOCK_MONOTONIC, &ed);
     }
-    while (ed.tv_nsec - st.tv_nsec < NESCLK_MASTER);
+    while ((ed.tv_nsec - st.tv_nsec) < NESCLK_MASTER);
 }
 
 
@@ -73,5 +73,5 @@ clock_cycle()
         else
             ppu_cycle();
     }
-    clock_end();
+    // clock_end();
 }

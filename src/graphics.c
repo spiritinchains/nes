@@ -1,6 +1,5 @@
 
 #include "common.h"
-#include "rom.h"
 
 extern SDL_Window* window;
 
@@ -31,14 +30,14 @@ void graphics_init()
     // SDL_Surface* surface = SDL_LoadBMP("misc/pattern.bmp");
     // dummy_tex = SDL_CreateTextureFromSurface(renderer, surface);
     // SDL_FreeSurface(surface);
-    draw_mutex = SDL_CreateMutex();
+    // draw_mutex = SDL_CreateMutex();
 }
 
 void graphics_cleanup()
 {
-    SDL_DestroyRenderer(renderer);
     SDL_DestroyTexture(rendertarget);
     // SDL_DestroyTexture(dummy_tex);
+    SDL_DestroyRenderer(renderer);
 }
 
 void graphics_draw()
@@ -58,7 +57,8 @@ void graphics_draw()
 
 void draw_begin()
 {
-    // printf("FRAME START\n");
+    frames++;
+    printf("FRAME: %d\n", frames);
     // SDL_LockMutex(draw_mutex);
     SDL_SetRenderTarget(renderer, rendertarget);
     // SDL_RenderClear(renderer);

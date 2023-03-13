@@ -28,7 +28,8 @@ struct ppu
     uint8_t lat_bg_lo;          // background low bits latch
     uint8_t lat_bg_hi;          // backgroung high bits latch
 
-    uint16_t at;                // attribute byte shift
+    uint16_t at_lo;             // attribute byte low bits shift
+    uint16_t at_hi;             // attribute byte high bits shift
     uint16_t bg_lo;             // background low bits shift
     uint16_t bg_hi;             // background high bits shift
 

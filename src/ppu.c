@@ -122,11 +122,24 @@ ppu_read8(uint16_t addr)
     addr &= 0x3FFF;
     if (addr >= 0 && addr < 0x2000)
     {
+        // // test nametable
         // int i = addr & 0x7;
         // int u = (addr & 0xf0) >> 4;
         // int v = (addr & 0xf00) >> 8;
         // uint8_t tp = debug_idx[u][i] | (debug_idx[v][i] << 4);
         // return tp;
+
+        // // test palette
+        // if ((addr & 0x8) != 0)
+        // {
+        //     if ((addr & 0x4) != 0)
+        //         return 0xFF;
+        //     else
+        //         return 0x00;
+        // }
+        // else
+        //     return 0x0F;
+
         return ROM.chr[addr];
     }
     if (addr >= 0x2000 && addr < 0x3EFF)
@@ -135,7 +148,12 @@ ppu_read8(uint16_t addr)
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
-        return pram[addr & 0x1F];
+        addr &= 0x1F;
+        if (addr & 0x3 == 0)
+        {
+            addr ^= 0x10;
+        }
+        return pram[addr];
     }
 }
 
@@ -150,14 +168,12 @@ ppu_write8(uint16_t addr, uint8_t data)
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
-        if (addr & ~0x000C == 0x3F10)
+        addr &= 0x1F;
+        if (addr & 0x3 == 0)
         {
-            pram[addr & 0x0F] = data;
+            addr ^= 0x10;
         }
-        else
-        {
-            pram[addr & 0x1F] = data;
-        }
+        pram[addr] = data;
     }
 }
 
@@ -305,10 +321,10 @@ ppu_reg_read(enum ppu_reg reg)
         case REG_PPUDATA:
             // printf("PPU Read PPUDATA\n");
             ret = ppu_read8(PPU.addr);
-            // if (PPU.increment_mode == 0)
-            //     PPU.addr++;
-            // else
-            //     PPU.addr += 32;
+            if (PPU.increment_mode == 0)
+                PPU.addr++;
+            else
+                PPU.addr += 32;
             break;
         case REG_OAMDATA:
             // printf("PPU Read OAMDATA\n");
@@ -332,11 +348,32 @@ nt_fetch()
 void
 at_fetch()
 {
+    /* 
+     * AT address format:
+     * 0010 0011 11YY YXXX
+     * XXX = high 3 bits of coarse X
+     * YYY = high 3 bits of coarse Y
+     */
     uint16_t at_addr = 0x23C0;
     at_addr |= PPU.addr & PPU_NAMETABLE;
     at_addr |= (PPU.addr >> 2) & 0x7;
     at_addr |= (PPU.addr >> 4) & 0x38;
+
+    /*
+     * AT shift index:
+     * ((X / 2) % 2 + ((Y / 2) % 2) * 2)
+     * X = coarse X
+     * Y = coarse Y
+     */
+    uint8_t at_shift = 0;
+    at_shift |= (PPU.addr >> 1) & 1;
+    at_shift |= (PPU.addr >> 5) & 2;
+    at_shift *= 2;
+
     PPU.lat_at = ppu_read8(at_addr);
+    PPU.lat_at >>= at_shift;
+    PPU.lat_at &= 0x3;
+    // printf("AT addr: %4X shift: %d data: %2X\n", at_addr, at_shift, PPU.lat_at);
 }
 
 void
@@ -426,7 +463,7 @@ ppu_cycle()
         if (PPU.show_bg || PPU.show_sprite)
         {
             // fetch bytes
-            if ((PPU.dot < 257 || PPU.dot > 320) && (PPU.show_bg || PPU.show_sprite))
+            if ((PPU.dot < 257 || PPU.dot > 320))
             {
                 if (PPU.dot % 8 == 1)
                 {
@@ -450,6 +487,8 @@ ppu_cycle()
             {
                 PPU.bg_lo <<= 1;
                 PPU.bg_hi <<= 1;
+                PPU.at_lo <<= 1;
+                PPU.at_hi <<= 1;
 
                 if (PPU.dot % 8 == 0)
                     inc_hor();
@@ -460,8 +499,8 @@ ppu_cycle()
                 {
                     PPU.bg_lo |= PPU.lat_bg_lo;
                     PPU.bg_hi |= PPU.lat_bg_hi;
-                    PPU.at <<= 8;
-                    PPU.at |= PPU.lat_at;
+                    PPU.at_lo |= (PPU.lat_at & 1) ? 0xFF : 0x00;
+                    PPU.at_hi |= (PPU.lat_at & 2) ? 0xFF : 0x00;
                 }
             }
 
@@ -475,22 +514,51 @@ ppu_cycle()
         // display pixel
         if (PPU.dot > 0 && PPU.dot <= 256 && PPU.scanline != 261)
         {
+            int x = PPU.dot - 1;
+            int y = PPU.scanline;
+
+            int pal_shift_i = ((x / 8) % 2) + ((y / 8) % 2) * 2;
+
+            uint8_t pal_i = 0;
+            pal_i |= (PPU.at_lo >> (15 - PPU.x)) & 1;
+            pal_i |= ((PPU.at_hi >> (15 - PPU.x)) << 1) & 2;
+
             uint8_t col_i = 0;
             col_i |= (PPU.bg_lo >> (15 - PPU.x)) & 1;
             col_i |= ((PPU.bg_hi >> (15 - PPU.x)) << 1) & 2;
 
-            // uint8_t hue = (PPU.scanline / 8) % 12 + 1;
-            uint8_t hue = 0x06;
-            SDL_Color pixel = colors[(col_i << 4) | hue];
-            
-            draw_pixel(PPU.dot - 1, PPU.scanline, pixel);
+            uint8_t color = ppu_read8(0x3F00 | (pal_i << 2) | col_i);
+
+            SDL_Color pixel = colors[color];
+
+            draw_pixel(x, y, pixel);
+
+            // draw gridlines
+            // if (x % 8 == 0 || y % 8 == 0)
+            // {
+            //     // tile
+            //     SDL_Color t = { .r = 0, .g = 0, .b = 255, .a = 100};
+            //     draw_pixel(x, y, t);
+            // }
+            // if (x % 16 == 0 || y % 16 == 0)
+            // {
+            //     // attribute boundary
+            //     SDL_Color t = { .r = 0, .g = 255, .b = 0, .a = 100};
+            //     draw_pixel(x, y, t);
+            // }
+            // if (x % 32 == 0 || y % 32 == 0)
+            // {
+            //     // attribute byte
+            //     SDL_Color t = { .r = 255, .g = 0, .b = 0, .a = 100};
+            //     draw_pixel(x, y, t);
+            // }
         }
     }
 
     // set vblank flag
     if (PPU.dot == 1 && PPU.scanline == 241)
     {
-        printf("VBLANK\n");
+        // printf("VBLANK\n");
         PPU.in_vblank = true;
         if (PPU.vblank_nmi) cpu_nmi();
         draw_end();
@@ -500,5 +568,18 @@ ppu_cycle()
     {
         PPU.in_vblank = false;
         draw_begin();
+        // dump attr data
+        // for (int i = 0; i < 4; i++)
+        // {
+        //     printf("NAMETABLE %04X:\n", 0x2000 | (i << 10));
+        //     for (int j = 0; j < 8; j++)
+        //     {
+        //         for (int k = 0; k < 8; k++)
+        //         {
+        //             printf("%02X ", ppu_read8(0x23C0 | (i << 10) | (j << 3) | k));
+        //         }
+        //         printf("\n");
+        //     }
+        // }
     }
 }

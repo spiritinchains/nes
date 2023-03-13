@@ -93,6 +93,8 @@ run(void* arg)
 
 void cleanup()
 {
-    pthread_cancel(emulation_thread);
+    // pthread_cancel(emulation_thread);
+    pthread_join(emulation_thread, NULL);
+    rom_close();
     graphics_cleanup();
 }

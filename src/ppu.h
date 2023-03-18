@@ -21,12 +21,12 @@ struct ppu
 {
     uint8_t data;               // Data bus contents
     uint16_t addr;              // PPU VRAM address
-    uint16_t scroll;            // PPU scroll register
+    uint16_t t;                 // temporary vram address
 
     uint8_t lat_nt;             // nametable byte latch
     uint8_t lat_at;             // attribute byte latch
     uint8_t lat_bg_lo;          // background low bits latch
-    uint8_t lat_bg_hi;          // backgroung high bits latch
+    uint8_t lat_bg_hi;          // background high bits latch
 
     uint16_t at_lo;             // attribute byte low bits shift
     uint16_t at_hi;             // attribute byte high bits shift
@@ -36,8 +36,6 @@ struct ppu
     uint16_t nt_base_addr;      // base nametable address
     uint16_t pt_addr;           // sprite pattern table address
     uint16_t bg_pt_addr;        // background pattern table address
-
-    uint16_t t;                 // temporary vram address
 
     unsigned w : 1;             // PPU address write latch
     unsigned x : 3;             // fine x scrolling
@@ -49,6 +47,7 @@ struct ppu
     bool spr_size;              // 0: 8x8, 1: 8x16
     bool master_slave;
     bool vblank_nmi;            // generate NMI on vblank
+
     /* PPUMASK flags */
     bool grayscale;
     bool show_left8_bg;
@@ -62,10 +61,20 @@ struct ppu
     /* OAM stuff */
     uint8_t oam_addr;
     uint8_t oam_data;
+    uint8_t sprmem_addr;
+
+    uint8_t spr_lo[8];
+    uint8_t spr_hi[8];
+    uint8_t spr_at[8];
+    uint8_t spr_ctr[8];
+
+    /* PPUSTATUS flags*/
+    bool spr_overflow;
+    bool spr0_hit;
+    bool in_vblank;
 
     /* other */
     bool even_frame;
-    bool in_vblank;
 
     uint32_t dot;
     uint32_t scanline;

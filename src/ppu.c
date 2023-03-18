@@ -15,6 +15,10 @@
 #define PPU_SCROLL_FINE_Y_SHIFT 12
 #define PPU_NAMETABLE_SHIFT     10
 
+#define PPU_SPRITE_PRIORITY     5
+#define PPU_SPRITE_FLIPH        6
+#define PPU_SPRITE_FLIPV        7
+
 struct ppu PPU;
 
 // NES Color Palette
@@ -108,6 +112,8 @@ uint8_t debug_idx[16][8] =
 uint8_t vram[2048];         // Video RAM - nametables
 uint8_t pram[32];           // Palette RAM
 uint8_t oam[256];           // Object Attribute Memory - sprites
+uint8_t sprmem[32];         // Secondary OAM - sprites on current scanline
+
 
 void
 ppu_init()
@@ -116,6 +122,8 @@ ppu_init()
     PPU.scanline = 0;
 }
 
+/* Bus read/write */
+
 uint8_t
 ppu_read8(uint16_t addr)
 {
@@ -123,11 +131,14 @@ ppu_read8(uint16_t addr)
     if (addr >= 0 && addr < 0x2000)
     {
         // // test nametable
-        // int i = addr & 0x7;
-        // int u = (addr & 0xf0) >> 4;
-        // int v = (addr & 0xf00) >> 8;
-        // uint8_t tp = debug_idx[u][i] | (debug_idx[v][i] << 4);
-        // return tp;
+        // if (addr < 0x1000)
+        // {
+        //     int i = addr & 0x7;
+        //     int u = (addr & 0xf0) >> 4;
+        //     int v = (addr & 0xf00) >> 8;
+        //     uint8_t tp = debug_idx[u][i] | (debug_idx[v][i] << 4);
+        //     return tp;
+        // }
 
         // // test palette
         // if ((addr & 0x8) != 0)
@@ -139,6 +150,11 @@ ppu_read8(uint16_t addr)
         // }
         // else
         //     return 0x0F;
+
+        // if (addr <= 0x1000)
+        // {
+        //     return 0xFF;
+        // }
 
         return ROM.chr[addr];
     }
@@ -241,7 +257,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             break;
 
         case REG_OAMADDR:
-            // printf("PPU Write OAMADDR\n");
+            // printf("PPU Write OAMADDR %02X\n", data);
             PPU.oam_addr = data;
             break;
         case REG_OAMDATA:
@@ -292,14 +308,17 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
                 PPU.addr += 32;
             break;
         case REG_OAMDMA:
-            // printf("PPU Write OAMDMA\n");
-            CPU.dma_cycles = 256;
+            // printf("PPU Write OAMDMA %02X\n", data);
+            CPU.dma_cycles = 512;
             // CPU.dma_page = (data << 8);
             // transfer data at once instead of simulating 256 cycles
+            // TODO: change this to work on a per cycle basis
             for (int i = 0; i < 256; i++)
             {
                 oam[i] = read8((data << 8) + i);
+                // printf("%02X ", oam[i]);
             }
+            // printf("\n");
             break;
     }
 }
@@ -312,9 +331,17 @@ ppu_reg_read(enum ppu_reg reg)
     {
         case REG_PPUSTATUS:
             // printf("PPU Read PPUSTATUS\n");
+            /*
+             * bit 0-4 : stale data bus contents
+             * bit 5 : sprite overflow
+             * bit 6 : sprite zero hit
+             * bit 7 : is ppu in vblank
+             */
             // clear address latch
             PPU.w = 0;
             uint8_t ppustatus = PPU.data & 0x1F;
+            ppustatus |= (PPU.spr_overflow << 5);
+            ppustatus |= (PPU.spr0_hit << 6);
             ppustatus |= (PPU.in_vblank << 7);
             ret = ppustatus;
             break;
@@ -335,6 +362,8 @@ ppu_reg_read(enum ppu_reg reg)
     }
     return ret;
 }
+
+/* Background byte fetching */
 
 void
 nt_fetch()
@@ -381,8 +410,8 @@ bg_lo_fetch()
 {
     uint8_t nt = PPU.lat_nt;
     uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
-    uint8_t bgtile = ppu_read8(PPU.bg_pt_addr + nt * 16 + fine_y);
-    PPU.lat_bg_lo = bgtile;
+    PPU.data = ppu_read8(PPU.bg_pt_addr + nt * 16 + fine_y);
+    PPU.lat_bg_lo = PPU.data;
 }
 
 void
@@ -390,9 +419,11 @@ bg_hi_fetch()
 {
     uint8_t nt = PPU.lat_nt;
     uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
-    uint8_t bgtile = ppu_read8(PPU.bg_pt_addr + nt * 16 + 8 + fine_y);
-    PPU.lat_bg_hi = bgtile;
+    PPU.data = ppu_read8(PPU.bg_pt_addr + nt * 16 + 8 + fine_y);
+    PPU.lat_bg_hi = PPU.data;
 }
+
+/* VRAM address manipulation */
 
 void
 inc_hor()
@@ -440,6 +471,53 @@ upd_ver()
     PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
 }
 
+/* OAM */
+
+// i = sprite index, hl = 0: low, 1: high
+void
+spr_fetch(int i, int hl)
+{
+    int spr_y = PPU.scanline - sprmem[i * 4];
+    int spr_i = sprmem[(i * 4) + 1] * 16;
+    uint8_t at = PPU.spr_at[i];
+
+    if ((at >> PPU_SPRITE_FLIPV) & 1)
+    {
+        spr_y = 8 - spr_y;
+    }
+
+    PPU.data = ppu_read8(PPU.pt_addr + spr_i + spr_y + (hl * 8));
+
+    if ((at >> PPU_SPRITE_FLIPH) & 1)
+    {
+        uint8_t x = 0;
+        for (int bit = 0; bit < 8; bit++)
+        {
+            x |= ((PPU.data >> bit) & 1) << (7 - bit);
+        }
+        PPU.data = x;
+    }
+
+    if (hl)
+        PPU.spr_hi[i] = PPU.data;
+    else
+        PPU.spr_lo[i] = PPU.data;
+}
+
+void
+spr_lo_fetch(int i)
+{
+    spr_fetch(i, 0);
+}
+
+void
+spr_hi_fetch(int i)
+{
+    spr_fetch(i, 1);
+}
+
+/* PPU cycle */
+
 void
 ppu_cycle()
 {
@@ -457,7 +535,7 @@ ppu_cycle()
 
     // printf("PPU dot: %d scan: %d\n", PPU.dot, PPU.scanline);
 
-    // rendering scanlines
+    // rendering actions
     if ((PPU.scanline < 240 || PPU.scanline > 260))
     {
         if (PPU.show_bg || PPU.show_sprite)
@@ -465,6 +543,7 @@ ppu_cycle()
             // fetch bytes
             if ((PPU.dot < 257 || PPU.dot > 320))
             {
+                // bg fetch
                 if (PPU.dot % 8 == 1)
                 {
                     nt_fetch();
@@ -482,6 +561,84 @@ ppu_cycle()
                     bg_hi_fetch();
                 }
             }
+            else
+            {
+                // sprite fetch
+                int spr_i = (PPU.dot - 257) / 8;    // index of sprite in sprmem
+                if (PPU.dot % 8 == 3)
+                {
+                    PPU.spr_at[spr_i] = sprmem[(spr_i * 4) + 2];
+                }
+                if (PPU.dot % 8 == 4)
+                {
+                    PPU.spr_ctr[spr_i] = sprmem[(spr_i * 4) + 3];
+                }
+                if (PPU.dot % 8 == 5)
+                {
+                    spr_lo_fetch(spr_i);
+                }
+                if (PPU.dot % 8 == 7)
+                {
+                    spr_hi_fetch(spr_i);
+                }
+            }
+
+            // clear sprite memory
+            if (PPU.dot > 0 && PPU.dot <= 64 && PPU.scanline != 261)
+            {
+                PPU.sprmem_addr = 0;
+                sprmem[(PPU.dot - 1) / 2] = 0xFF;
+            }
+
+            // sprite evaluation
+            if (PPU.dot > 64 && PPU.dot <= 256 && PPU.scanline != 261)
+            {
+                if (PPU.dot % 2 == 1)
+                {
+                    // read
+                    PPU.oam_data = oam[PPU.oam_addr];
+                    PPU.oam_addr++;
+                    // printf("READ %02X\n", PPU.oam_data);
+                }
+                else
+                {
+                    //write
+                    sprmem[PPU.sprmem_addr] = PPU.oam_data;
+                    // printf("WRITE %02X to %02X\n", PPU.oam_data, PPU.sprmem_addr);
+                    // for (int i = 0; i < 32; i++)
+                    // {
+                    //     printf("%02X ", sprmem[i]);
+                    // }
+                    // printf("\n");
+                    if (PPU.sprmem_addr >= 32)
+                    {
+                        PPU.oam_data = sprmem[0];
+                    }
+                    else if (PPU.sprmem_addr % 4 == 0)
+                    {
+                        if ((PPU.scanline) >= sprmem[PPU.sprmem_addr] && (PPU.scanline) <= (sprmem[PPU.sprmem_addr] + 7))
+                        {
+                            // printf("INC BOTH %d %d\n", PPU.scanline, PPU.oam_data);
+                            PPU.sprmem_addr++;
+                        }
+                        else
+                        {
+                            // printf("INC SKIP %d %d\n", PPU.scanline, PPU.oam_data);
+                            PPU.oam_addr += 3;
+                        }
+                    }
+                    else
+                    {
+                        // printf("INC BOTH2 %d %d\n", PPU.scanline, PPU.oam_data);
+                        PPU.sprmem_addr++;
+                    }
+                }
+            }
+            else if (PPU.dot <= 320)
+            {
+                PPU.oam_addr = 0;
+            }
+
             // shift and load registers, increment vram
             if ((PPU.dot >= 2 && PPU.dot <= 257) || (PPU.dot >= 322 && PPU.dot <= 337))
             {
@@ -502,6 +659,24 @@ ppu_cycle()
                     PPU.at_lo |= (PPU.lat_at & 1) ? 0xFF : 0x00;
                     PPU.at_hi |= (PPU.lat_at & 2) ? 0xFF : 0x00;
                 }
+                if (!(PPU.dot >= 322 && PPU.dot <= 337))
+                {
+                    for (int i = 0; i < 8; i++)
+                    {
+                        if (PPU.spr_ctr[i] == 0)
+                        {
+                            // shift sprite registers
+                            PPU.spr_lo[i] <<= 1;
+                            PPU.spr_hi[i] <<= 1;
+                            if (PPU.spr_lo[i] == 0 && PPU.spr_hi[i] == 0)
+                                PPU.spr_ctr[i] = 0xFF;
+                        }
+                        if (PPU.spr_ctr[i] > 0)
+                        {
+                            PPU.spr_ctr[i]--;
+                        }
+                    }
+                }
             }
 
             // update vram address
@@ -511,27 +686,80 @@ ppu_cycle()
                 upd_ver();
 
         }
+
         // display pixel
         if (PPU.dot > 0 && PPU.dot <= 256 && PPU.scanline != 261)
         {
             int x = PPU.dot - 1;
             int y = PPU.scanline;
 
-            int pal_shift_i = ((x / 8) % 2) + ((y / 8) % 2) * 2;
+            SDL_Color bgpixel;
+            SDL_Color sprpixel;
 
-            uint8_t pal_i = 0;
-            pal_i |= (PPU.at_lo >> (15 - PPU.x)) & 1;
-            pal_i |= ((PPU.at_hi >> (15 - PPU.x)) << 1) & 2;
+            bool bg_is_opaque = false;
+            bool spr_is_opaque = false;
 
-            uint8_t col_i = 0;
-            col_i |= (PPU.bg_lo >> (15 - PPU.x)) & 1;
-            col_i |= ((PPU.bg_hi >> (15 - PPU.x)) << 1) & 2;
+            // background rendering
+            if (PPU.show_bg)
+            {
+                int pal_shift_i = ((x / 8) % 2) + ((y / 8) % 2) * 2;
 
-            uint8_t color = ppu_read8(0x3F00 | (pal_i << 2) | col_i);
+                uint8_t pal_i = 0;
+                pal_i |= (PPU.at_lo >> (15 - PPU.x)) & 1;
+                pal_i |= ((PPU.at_hi >> (15 - PPU.x)) << 1) & 2;
 
-            SDL_Color pixel = colors[color];
+                uint8_t col_i = 0;
+                col_i |= (PPU.bg_lo >> (15 - PPU.x)) & 1;
+                col_i |= ((PPU.bg_hi >> (15 - PPU.x)) << 1) & 2;
 
-            draw_pixel(x, y, pixel);
+                // if (col_i != 0)
+                //     bg_is_opaque = true;
+
+                uint8_t color = ppu_read8(0x3F00 | (pal_i << 2) | col_i);
+
+                bgpixel = colors[color];
+
+                draw_pixel(x, y, bgpixel);
+            }
+
+            // sprites rendering
+            if (PPU.show_sprite && PPU.dot != 256)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    bool behind_bg = (PPU.spr_at[i] >> PPU_SPRITE_PRIORITY) & 1;
+                    if (PPU.spr_ctr[i] == 0)
+                    {
+                        uint8_t col_i = 0;
+                        col_i |= (PPU.spr_lo[i] >> 7) & 1;
+                        col_i |= ((PPU.spr_hi[i] >> 7) << 1) & 2;
+
+                        uint8_t pal_i = PPU.spr_at[i] & 3;
+                        uint8_t color = ppu_read8(0x3F10 | (pal_i << 2) | col_i);
+
+                        sprpixel = colors[color];
+
+                        if (col_i != 0 && !spr_is_opaque)
+                        {
+                            if (bg_is_opaque)
+                            {
+                                if (i == 0)
+                                    PPU.spr0_hit = true;
+                                if (!behind_bg)
+                                {
+                                    draw_pixel(x, y, sprpixel);
+                                    spr_is_opaque = true;
+                                }
+                            }
+                            else
+                            {
+                                draw_pixel(x, y, sprpixel);
+                                spr_is_opaque = true;
+                            }
+                        }
+                    }
+                }
+            }
 
             // draw gridlines
             // if (x % 8 == 0 || y % 8 == 0)
@@ -567,6 +795,8 @@ ppu_cycle()
     if (PPU.dot == 1 && PPU.scanline == 261)
     {
         PPU.in_vblank = false;
+        PPU.spr0_hit = false;
+        PPU.sprmem_addr = 0;
         draw_begin();
         // dump attr data
         // for (int i = 0; i < 4; i++)

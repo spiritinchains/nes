@@ -58,7 +58,7 @@ void graphics_draw()
 void draw_begin()
 {
     frames++;
-    printf("FRAME: %d\n", frames);
+    // printf("FRAME: %d\n", frames);
     // SDL_LockMutex(draw_mutex);
     SDL_SetRenderTarget(renderer, rendertarget);
     // SDL_RenderClear(renderer);

@@ -9,6 +9,8 @@
 #define PPU_SCROLL_Y            0x03E0
 #define PPU_SCROLL_FINE_Y       0x7000
 #define PPU_NAMETABLE           0x0C00
+#define PPU_NAMETABLE_X         0x0400
+#define PPU_NAMETABLE_Y         0x0800
 
 #define PPU_SCROLL_X_SHIFT      0
 #define PPU_SCROLL_Y_SHIFT      5
@@ -160,7 +162,17 @@ ppu_read8(uint16_t addr)
     }
     if (addr >= 0x2000 && addr < 0x3EFF)
     {
-        return vram[addr & 0x7FF];
+        if (ROM.mirroring == MIRRORING_HORIZONTAL)
+        {
+            uint16_t vram_i = 0;
+            vram_i |= addr & 0x3FF;
+            vram_i |= (addr & 0x800) >> 1;
+            return vram[vram_i];
+        }
+        else if (ROM.mirroring == MIRRORING_VERTICAL)
+        {
+            return vram[addr & 0x7FF];
+        }
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
@@ -179,8 +191,17 @@ ppu_write8(uint16_t addr, uint8_t data)
     addr &= 0x3FFF;
     if (addr >= 0x2000 && addr < 0x3EFF)
     {
-        // TODO: make this follow mirroring conventions
-        vram[addr & 0x7FF] = data;
+        if (ROM.mirroring == MIRRORING_HORIZONTAL)
+        {
+            uint16_t vram_i = 0;
+            vram_i |= addr & 0x3FF;
+            vram_i |= (addr & 0x800) >> 1;
+            vram[vram_i] = data;
+        }
+        else if (ROM.mirroring == MIRRORING_VERTICAL)
+        {
+            vram[addr & 0x7FF] = data;
+        }
     }
     if (addr >= 0x3F00 && addr < 0x4000)
     {
@@ -266,7 +287,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
             PPU.oam_addr++;
             break;
         case REG_PPUSCROLL:
-            // printf("PPU Write PPUSCROLL\n");
+            // printf("PPU Write PPUSCROLL %02X\n", data);
             if (PPU.w == 0)
             {
                 // X scroll
@@ -279,7 +300,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
                 // Y scroll
                 PPU.t &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
                 PPU.t |= ((data >> 3) & 0x1F) << PPU_SCROLL_Y_SHIFT;
-                PPU.t |= (data & 0x03) << PPU_SCROLL_FINE_Y_SHIFT;
+                PPU.t |= (data & 0x7) << PPU_SCROLL_FINE_Y_SHIFT;
             }
             PPU.w ^= 1;
             break;
@@ -347,7 +368,8 @@ ppu_reg_read(enum ppu_reg reg)
             break;
         case REG_PPUDATA:
             // printf("PPU Read PPUDATA\n");
-            ret = ppu_read8(PPU.addr);
+            ret = PPU.data;
+            PPU.data = ppu_read8(PPU.addr);
             if (PPU.increment_mode == 0)
                 PPU.addr++;
             else
@@ -371,7 +393,7 @@ nt_fetch()
     uint16_t nt_addr = 0x2000;
     nt_addr |= (PPU.addr & 0xFFF);
     PPU.lat_nt = ppu_read8(nt_addr);
-    // printf("NT addr: %4X data: %2X\n", nt_addr, PPU.lat_nt);
+    // printf("NT addr: %4X data: %2X %d,%d\n", nt_addr, PPU.lat_nt, PPU.dot, PPU.scanline);
 }
 
 void
@@ -433,42 +455,48 @@ inc_hor()
     PPU.addr &= ~PPU_SCROLL_X;
     PPU.addr |= (x & PPU_SCROLL_X);
     // switch horizontal nametable on overflow (0x2000/0x2400, 0x2800/0x2C00)
-    // PPU.addr ^= (x / 32) << PPU_NAMETABLE_SHIFT;
-    // TODO: find when this applies
+    PPU.addr ^= (x / 32) << PPU_NAMETABLE_SHIFT;
 }
 
 void
 inc_ver()
 {
+    // printf("inc ver %d,%d\n", PPU.dot, PPU.scanline);
     uint8_t y = (PPU.addr & PPU_SCROLL_Y) >> PPU_SCROLL_Y_SHIFT;
     uint8_t fine_y = (PPU.addr & PPU_SCROLL_FINE_Y) >> PPU_SCROLL_FINE_Y_SHIFT;
 
     fine_y++;
-    y += (fine_y & 0x8) >> 3;
+    y += fine_y / 8;
 
     // switch vertical nametable on overflow (0x2000/0x2800, 0x2400/0x2C00)
-    // PPU.addr ^= ((y == 30) ? 1 : 0) << (PPU_NAMETABLE_SHIFT + 1);
+    if (y == 30)
+    {
+        y = 0;
+        PPU.addr ^= 1 << (PPU_NAMETABLE_SHIFT + 1);
+    }
 
-    if (y == 30) y = 0;
     PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
     PPU.addr |= (fine_y & 0x7) << PPU_SCROLL_FINE_Y_SHIFT;
     PPU.addr |= (y & 0x1f) << PPU_SCROLL_Y_SHIFT;
+    // printf("addr: %04X fy: %02X y: %02X\n", PPU.addr, fine_y, y);
 }
 
 void
 upd_hor()
 {
     // printf("upd hor old: %4X ", PPU.addr);
-    PPU.addr &= ~PPU_SCROLL_X;
-    PPU.addr |= PPU.t & PPU_SCROLL_X;
+    PPU.addr &= ~(PPU_SCROLL_X | PPU_NAMETABLE_X);
+    PPU.addr |= PPU.t & (PPU_SCROLL_X | PPU_NAMETABLE_X);
     // printf("new: %4X t: %4X\n", PPU.addr, PPU.t);
 }
 
 void
 upd_ver()
 {
-    PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
-    PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y);
+    // printf("upd ver old: %4X ", PPU.addr);
+    PPU.addr &= ~(PPU_SCROLL_Y | PPU_SCROLL_FINE_Y | PPU_NAMETABLE_Y);
+    PPU.addr |= PPU.t & (PPU_SCROLL_Y | PPU_SCROLL_FINE_Y | PPU_NAMETABLE_Y);
+    // printf("new: %4X t: %4X\n", PPU.addr, PPU.t);
 }
 
 /* OAM */
@@ -798,18 +826,6 @@ ppu_cycle()
         PPU.spr0_hit = false;
         PPU.sprmem_addr = 0;
         draw_begin();
-        // dump attr data
-        // for (int i = 0; i < 4; i++)
-        // {
-        //     printf("NAMETABLE %04X:\n", 0x2000 | (i << 10));
-        //     for (int j = 0; j < 8; j++)
-        //     {
-        //         for (int k = 0; k < 8; k++)
-        //         {
-        //             printf("%02X ", ppu_read8(0x23C0 | (i << 10) | (j << 3) | k));
-        //         }
-        //         printf("\n");
-        //     }
-        // }
+        // printf("FRAME %d NAMETABLE %04X\n", frames, PPU.nt_base_addr);
     }
 }

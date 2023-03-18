@@ -50,7 +50,6 @@ main(int argc, char* argv[])
             switch (ev.type)
             {
                 case SDL_QUIT:
-                    SDL_Quit();
                     running = false;
                     break;
             }
@@ -101,4 +100,5 @@ void cleanup()
     pthread_join(emulation_thread, NULL);
     rom_close();
     graphics_cleanup();
+    SDL_Quit();
 }

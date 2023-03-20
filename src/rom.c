@@ -23,6 +23,9 @@ rom_open(const char fname[])
 {
 
     FILE* romfile = fopen(fname, "rb");
+
+    assert(romfile);
+
     char header[16];
     fread(header, 1, 16, romfile);
 

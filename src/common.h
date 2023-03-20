@@ -13,5 +13,7 @@
 
 #include <SDL2/SDL.h>
 
+extern size_t cycles;
+extern size_t frames;
 
 #endif

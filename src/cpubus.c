@@ -42,6 +42,27 @@ read8(uint16_t addr)
     {
         return ppu_reg_read((addr % 8));
     }
+    // APU
+    if (addr >= 0x4000 && addr <= 0x4007)
+    {
+        // pulse
+    }
+    if (addr >= 0x4008 && addr <= 0x400B)
+    {
+        // triangle
+    }
+    if (addr >= 0x400C && addr <= 0x400F)
+    {
+        // noise
+    }
+    if (addr >= 0x4010 && addr <= 0x4013)
+    {
+        // DMC
+    }
+    if (addr == 0x4013)
+    {
+        // channel, counter status
+    }
     // controllers
     if (addr == 0x4016)
     {
@@ -51,7 +72,7 @@ read8(uint16_t addr)
     if (addr == 0x4017)
     {
         // port 2
-        return ctrl_read(2);
+        // return ctrl_read(2);
     }
     return *map[addr];
 }
@@ -97,3 +118,11 @@ read16(uint16_t addr)
 
     return r;
 }
+
+void
+dma_write(uint16_t addr)
+{
+    oam[PPU.oam_addr] = read8(addr);
+    PPU.oam_addr++;
+}
+

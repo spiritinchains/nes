@@ -122,6 +122,7 @@ ppu_init()
 {
     PPU.dot = 0;
     PPU.scanline = 0;
+    PPU.even_frame = 0;
 }
 
 /* Bus read/write */
@@ -208,7 +209,7 @@ ppu_write8(uint16_t addr, uint8_t data)
         addr &= 0x1F;
         if (addr & 0x3 == 0)
         {
-            addr ^= 0x10;
+            addr &= ~0x10;
         }
         pram[addr] = data;
     }
@@ -284,7 +285,10 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
         case REG_OAMDATA:
             // printf("PPU Write OAMDATA\n");
             oam[PPU.oam_addr] = data;
-            PPU.oam_addr++;
+            if (PPU.scanline > 239 && PPU.scanline < 261)
+                PPU.oam_addr += 4;
+            else
+                PPU.oam_addr++;
             break;
         case REG_PPUSCROLL:
             // printf("PPU Write PPUSCROLL %02X\n", data);
@@ -331,15 +335,7 @@ ppu_reg_write(enum ppu_reg reg, uint8_t data)
         case REG_OAMDMA:
             // printf("PPU Write OAMDMA %02X\n", data);
             CPU.dma_cycles = 512;
-            // CPU.dma_page = (data << 8);
-            // transfer data at once instead of simulating 256 cycles
-            // TODO: change this to work on a per cycle basis
-            for (int i = 0; i < 256; i++)
-            {
-                oam[i] = read8((data << 8) + i);
-                // printf("%02X ", oam[i]);
-            }
-            // printf("\n");
+            CPU.dma_page = (data << 8);
             break;
     }
 }
@@ -362,7 +358,7 @@ ppu_reg_read(enum ppu_reg reg)
             PPU.w = 0;
             uint8_t ppustatus = PPU.data & 0x1F;
             ppustatus |= (PPU.spr_overflow << 5);
-            ppustatus |= (PPU.spr0_hit << 6);
+            ppustatus |= (PPU.spr_0_hit << 6);
             ppustatus |= (PPU.in_vblank << 7);
             ret = ppustatus;
             break;
@@ -599,7 +595,7 @@ ppu_cycle()
                 }
                 if (PPU.dot % 8 == 4)
                 {
-                    PPU.spr_ctr[spr_i] = sprmem[(spr_i * 4) + 3];
+                    PPU.spr_x[spr_i] = sprmem[(spr_i * 4) + 3];
                 }
                 if (PPU.dot % 8 == 5)
                 {
@@ -614,57 +610,45 @@ ppu_cycle()
             // clear sprite memory
             if (PPU.dot > 0 && PPU.dot <= 64 && PPU.scanline != 261)
             {
-                PPU.sprmem_addr = 0;
                 sprmem[(PPU.dot - 1) / 2] = 0xFF;
             }
 
             // sprite evaluation
             if (PPU.dot > 64 && PPU.dot <= 256 && PPU.scanline != 261)
             {
-                if (PPU.dot % 2 == 1)
+                if (PPU.dot % 2)
                 {
-                    // read
                     PPU.oam_data = oam[PPU.oam_addr];
-                    PPU.oam_addr++;
-                    // printf("READ %02X\n", PPU.oam_data);
-                }
-                else
-                {
-                    //write
-                    sprmem[PPU.sprmem_addr] = PPU.oam_data;
-                    // printf("WRITE %02X to %02X\n", PPU.oam_data, PPU.sprmem_addr);
-                    // for (int i = 0; i < 32; i++)
-                    // {
-                    //     printf("%02X ", sprmem[i]);
-                    // }
-                    // printf("\n");
-                    if (PPU.sprmem_addr >= 32)
+                    if (PPU.spr_ctr / 4 < 8)
                     {
-                        PPU.oam_data = sprmem[0];
-                    }
-                    else if (PPU.sprmem_addr % 4 == 0)
-                    {
-                        if ((PPU.scanline) >= sprmem[PPU.sprmem_addr] && (PPU.scanline) <= (sprmem[PPU.sprmem_addr] + 7))
+                        sprmem[PPU.spr_ctr] = PPU.oam_data;
+                        if (PPU.oam_addr % 4 == 0)
                         {
-                            // printf("INC BOTH %d %d\n", PPU.scanline, PPU.oam_data);
-                            PPU.sprmem_addr++;
+                            if (PPU.scanline >= PPU.oam_data && PPU.scanline <= (PPU.oam_data + 7))
+                            {
+                                PPU.oam_addr++;
+                                PPU.spr_ctr++;
+                            }
+                            else
+                            {
+                                PPU.oam_addr += 4;
+                            }
                         }
                         else
                         {
-                            // printf("INC SKIP %d %d\n", PPU.scanline, PPU.oam_data);
-                            PPU.oam_addr += 3;
+                            PPU.oam_addr++;
+                            PPU.spr_ctr++;
                         }
                     }
                     else
                     {
-                        // printf("INC BOTH2 %d %d\n", PPU.scanline, PPU.oam_data);
-                        PPU.sprmem_addr++;
                     }
                 }
             }
             else if (PPU.dot <= 320)
             {
                 PPU.oam_addr = 0;
+                PPU.spr_ctr = 0;
             }
 
             // shift and load registers, increment vram
@@ -691,17 +675,17 @@ ppu_cycle()
                 {
                     for (int i = 0; i < 8; i++)
                     {
-                        if (PPU.spr_ctr[i] == 0)
+                        if (PPU.spr_x[i] == 0)
                         {
                             // shift sprite registers
                             PPU.spr_lo[i] <<= 1;
                             PPU.spr_hi[i] <<= 1;
                             if (PPU.spr_lo[i] == 0 && PPU.spr_hi[i] == 0)
-                                PPU.spr_ctr[i] = 0xFF;
+                                PPU.spr_x[i] = 0xFF;
                         }
-                        if (PPU.spr_ctr[i] > 0)
+                        if (PPU.spr_x[i] > 0)
                         {
-                            PPU.spr_ctr[i]--;
+                            PPU.spr_x[i]--;
                         }
                     }
                 }
@@ -756,7 +740,7 @@ ppu_cycle()
                 for (int i = 0; i < 8; i++)
                 {
                     bool behind_bg = (PPU.spr_at[i] >> PPU_SPRITE_PRIORITY) & 1;
-                    if (PPU.spr_ctr[i] == 0)
+                    if (PPU.spr_x[i] == 0)
                     {
                         uint8_t col_i = 0;
                         col_i |= (PPU.spr_lo[i] >> 7) & 1;
@@ -772,7 +756,7 @@ ppu_cycle()
                             if (bg_is_opaque)
                             {
                                 if (i == 0)
-                                    PPU.spr0_hit = true;
+                                    PPU.spr_0_hit = true;
                                 if (!behind_bg)
                                 {
                                     draw_pixel(x, y, sprpixel);
@@ -823,8 +807,8 @@ ppu_cycle()
     if (PPU.dot == 1 && PPU.scanline == 261)
     {
         PPU.in_vblank = false;
-        PPU.spr0_hit = false;
-        PPU.sprmem_addr = 0;
+        PPU.spr_0_hit = false;
+        PPU.spr_overflow = false;
         draw_begin();
         // printf("FRAME %d NAMETABLE %04X\n", frames, PPU.nt_base_addr);
     }

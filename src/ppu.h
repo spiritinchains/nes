@@ -61,16 +61,19 @@ struct ppu
     /* OAM stuff */
     uint8_t oam_addr;
     uint8_t oam_data;
-    uint8_t sprmem_addr;
+
+    uint8_t spr_ctr;
 
     uint8_t spr_lo[8];
     uint8_t spr_hi[8];
     uint8_t spr_at[8];
-    uint8_t spr_ctr[8];
+    uint8_t spr_x[8];
+
+    int spr_eval_state;
 
     /* PPUSTATUS flags*/
     bool spr_overflow;
-    bool spr0_hit;
+    bool spr_0_hit;
     bool in_vblank;
 
     /* other */
@@ -79,10 +82,10 @@ struct ppu
     uint32_t dot;
     uint32_t scanline;
 
-    SDL_Color cur_pixels[16];
-};
+} extern PPU;
 
-extern struct ppu PPU;
+extern uint8_t oam[];
+
 
 void ppu_init();
 void ppu_cycle();

@@ -675,6 +675,11 @@ cpu_cycle()
     // skip cycle if dma ongoing
     if (CPU.dma_cycles > 0)
     {
+        if (CPU.dma_cycles % 2 == 0)
+        {
+            dma_write(CPU.dma_page | (256 - (CPU.dma_cycles >> 1)));
+        }
+
         CPU.dma_cycles--;
         return;
     }

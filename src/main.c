@@ -34,14 +34,6 @@ main(int argc, char* argv[])
 
     rom_open(argv[1]);
 
-    window = SDL_CreateWindow(
-        "NES Emulator",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        640, 600,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
-    );
-
     init();
     while (running)
     {
@@ -65,7 +57,18 @@ init()
 {
     running = true;
 
+    SDL_Init(SDL_INIT_VIDEO);
+    // SDL_Init(SDL_INIT_AUDIO);
+
     keyboard_state = SDL_GetKeyboardState(NULL);
+
+    window = SDL_CreateWindow(
+        "NES Emulator",
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        640, 600,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
+    );
 
     clock_init();
     bus_init();
